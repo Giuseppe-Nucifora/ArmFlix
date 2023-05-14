@@ -4,8 +4,11 @@ Project made for the class of Computer Architecture (Architettura degli elaborat
 It includes the following point:
 
 1.Menù and interaction with it\n
+
 2.Array with multiple types of data and print
+
 3.Add/remove element
+
 4.File I/O
 5.Filter on some type of data (iterative)
 6.Filter on some type of data (recursive)
