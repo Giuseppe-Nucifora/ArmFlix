@@ -3,13 +3,13 @@ filename: .asciz "armflix.dat"
 read_mode: .asciz "r"
 write_mode: .asciz "w"
 fmt_menu_title:
-        .asciz "--------------------------------------------------------------------\n               _   ___ __  __   ___ _    _____  __\n              /_\\ | _ \\  \\/  | | __| |  |_ _\\ \\/ /\n             / _ \\|   / |\\/| | | _|| |__ | | >  < \n            /_/ \\_\\_|_\\_|  |_| |_| |____|___/_/\\_\\\n                                                  \n"
+        .asciz "--------------------------------------------------------------------------\n               _   ___ __  __   ___ _    _____  __\n              /_\\ | _ \\  \\/  | | __| |  |_ _\\ \\/ /\n             / _ \\|   / |\\/| | | _|| |__ | | >  < \n            /_/ \\_\\_|_\\_|  |_| |_| |____|___/_/\\_\\\n                                                  \n"
 fmt_menu_line:
-    .asciz "--------------------------------------------------------------------\n"
+    .asciz "--------------------------------------------------------------------------\n"
 fmt_menu_header:
-    .asciz "  # TITOLO      GENERE             ANNO                     PREZZO\n"
+    .asciz "  # TITOLO           GENERE               ANNO                     PREZZO\n"
 fmt_menu_entry:
-    .asciz "%3d %-10s %-20s %-20s %8d\n"
+    .asciz "%3d %-16s %-20s %-20s %10d\n"
 fmt_menu_options:
     .ascii "1: Aggiungi Film\n"
     .ascii "2: Elimina Film\n"
@@ -22,7 +22,6 @@ fmt_menu_options:
     .ascii "9: Eliminazione del primo duplicato (rispetto a un attributo numerico)\n"
     .asciz "0: Esci\n"
 
-
 fmt_prezzo_medio: .asciz "\nPrezzo medio: %d\n\n"
 fmt_prezzo_medio_double: .asciz "\nPrezzo medio: %.2f\n\n"
 fmt_fail_save_data: .asciz "\nImpossibile salvere i dati.\n\n"
@@ -30,13 +29,12 @@ fmt_fail_aggiungi_film: .asciz "\nMemoria insufficiente. Eliminare un'film, quin
 fmt_fail_calcola_prezzo_medio: .asciz "\nNessuna film presente.\n\n"
 fmt_scan_int: .asciz "%d"
 fmt_scan_str: .asciz "%127s"
-fmt_prompt_menu: .asciz "? "
+fmt_prompt_menu: .asciz "> "
 fmt_prompt_titolo: .asciz "Titolo: "
 fmt_prompt_genere: .asciz "Genere: "
 fmt_prompt_anno: .asciz "Anno: "
 fmt_prompt_prezzo: .asciz "Prezzo: "
 fmt_prompt_index: .asciz "# (fuori range per annullare): "
-fmt_prompt_continue: .asciz  "Premi '104' per continuare "
 .align 2
 
 .data
@@ -126,10 +124,8 @@ main:
         bne no_prezzo_medio_double_film
         bl calcola_prezzo_medio_double
         no_prezzo_medio_double_film:
-        
-        read_int fmt_prompt_continue
-        cmp x0, #104
-        beq main_loop     
+
+        b main_loop    
     end_main_loop:
 
     mov w0, #0
