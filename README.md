@@ -1,4 +1,4 @@
-#Armflix
+Armflix
 
 Project made for the class of Computer Architecture (Architettura degli elaboratori) at Unical. Based on the CPU Arm.
 It includes the following point:
