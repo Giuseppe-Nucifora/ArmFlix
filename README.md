@@ -2,7 +2,7 @@
 
 ArmFlix is a TUI (Text-based User Interface) App developed for ARM64 CPU. It is part of the final exam of the Computer Architecture course at UNICAL and aims to implement the following points:
 
-1. Menù and interaction with it ✔️ (Works but It needs the other )
+1. Menù and interaction with it ✔️ (Works but It needs the other points. )
 
 2. Array with multiple types of data and print ✔️
 
