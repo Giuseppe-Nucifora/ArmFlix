@@ -1,9 +1,8 @@
 Armflix
 
-Project made for the class of Computer Architecture (Architettura degli elaboratori) at Unical. Based on the CPU Arm.
-It includes the following point:
+ArmFlix is a TUI (Text-based User Interface) App developed for ARM64 CPU. It is part of the final exam of the Computer Architecture course at UNICAL and aims to implement the following points:
 
-1.Menù and interaction with it\n
+1.Menù and interaction with it
 
 2.Array with multiple types of data and print
 
