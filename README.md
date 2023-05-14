@@ -3,7 +3,7 @@ Armflix
 Project made for the class of Computer Architecture (Architettura degli elaboratori) at Unical. Based on the CPU Arm.
 It includes the following point:
 
-1.Menù and interaction with it
+1.Menù and interaction with it\n
 2.Array with multiple types of data and print
 3.Add/remove element
 4.File I/O
