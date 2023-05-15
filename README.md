@@ -1,5 +1,5 @@
 # ArmFlix
-<img src="https://i.imgur.com/oaXcr4M.png" alt="Logo magnifico fatto dallo strabiliante Gabriele Grillo" width="500px">
+<img src="https://i.imgur.com/hNINSrj.png" alt="Logo magnifico fatto dallo strabiliante Gabriele Grillo" style="width: 500px; display: block; margin-left: auto; margin-right: auto;">
 
 ArmFlix is a TUI (Text-based User Interface) App developed for ARM64 CPU. It is part of the final exam of the Computer Architecture course at UNICAL and aims to implement the following points:
 
