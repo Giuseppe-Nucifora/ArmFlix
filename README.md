@@ -24,8 +24,8 @@
 10. - [ ] Elimination of the first duplicate (intended as an element equal to the previous one) with respect to a numerical attribute
 
 ## Usage
-### Create the program  
-`aarch64-linux-gnu-gcc -o amrflix -static progetto.s`
+### Build the executable
+`aarch64-linux-gnu-gcc -o armflix -static progetto.s`
 
 ### Execute the program  
 `qemu-aarch64 armflix`
