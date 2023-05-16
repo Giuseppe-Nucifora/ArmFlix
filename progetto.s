@@ -3,7 +3,7 @@ filename: .asciz "armflix.dat"
 read_mode: .asciz "r"
 write_mode: .asciz "w"
 fmt_menu_title:
-        .asciz "--------------------------------------------------------------------------\n               _   ___ __  __   ___ _    _____  __\n              /_\\ | _ \\  \\/  | | __| |  |_ _\\ \\/ /\n             / _ \\|   / |\\/| | | _|| |__ | | >  < \n            /_/ \\_\\_|_\\_|  |_| |_| |____|___/_/\\_\\\n                                                  \n"
+        .asciz "               _   ___ __  __   ___ _    _____  __\n              /_\\ | _ \\  \\/  | | __| |  |_ _\\ \\/ /\n             / _ \\|   / |\\/| | | _|| |__ | | >  < \n            /_/ \\_\\_|_\\_|  |_| |_| |____|___/_/\\_\\\n                                                  \n"
 fmt_menu_line:
     .asciz "--------------------------------------------------------------------------\n"
 fmt_menu_header:
@@ -44,8 +44,8 @@ n_film: .word 0
 
 .equ size_film_titolo, 30
 .equ size_film_genere, 18
-.equ size_film_anno, 4
-.equ size_film_prezzo, 4
+.equ size_film_anno, 8
+.equ size_film_prezzo, 8
 
 .equ offset_film_titolo, 0
 .equ offset_film_genere, offset_film_titolo + size_film_titolo //30
@@ -226,7 +226,10 @@ print_menu:
     stp x29, x30, [sp, #-16]!
     stp x19, x20, [sp, #-16]!
     stp x21, x22, [sp, #-16]!
-
+    
+    adr x0, fmt_menu_line
+    bl printf
+    
     adr x0, fmt_menu_title
     bl printf
 
