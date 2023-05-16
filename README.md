@@ -5,7 +5,7 @@
 
 1. - [X] Menù and interaction with it (Works but It needs the other points. )
 
-2. - [X] Array with multiple types of data and print
+2. - [X] Array with multiple types of data and print.
 
 3. - [X] Add/remove element
 
