@@ -43,13 +43,13 @@ n_film: .word 0
 .equ max_film, 5
 
 .equ size_film_titolo, 30
-.equ size_film_genere, 15
-.equ size_film_anno, 5
+.equ size_film_genere, 18
+.equ size_film_anno, 4
 .equ size_film_prezzo, 4
 
 .equ offset_film_titolo, 0
-.equ offset_film_genere, offset_film_titolo + size_film_titolo
-.equ offset_film_anno, offset_film_genere + size_film_genere
+.equ offset_film_genere, offset_film_titolo + size_film_titolo //30
+.equ offset_film_anno, offset_film_genere + size_film_genere //48
 .equ offset_film_prezzo, offset_film_anno + size_film_anno
 .equ film_size_aligned, 64
 
@@ -115,6 +115,11 @@ main:
         bl elimina_film
         no_elimina_film:
 
+        cmp x0, #3
+        bne no_filtro_genere
+        bl filtra_per_genere
+        no_filtro_genere:
+      
         cmp x0, #5
         bne no_prezzo_medio_film
         bl calcola_prezzo_medio
@@ -124,6 +129,8 @@ main:
         bne no_prezzo_medio_double_film
         bl calcola_prezzo_medio_double
         no_prezzo_medio_double_film:
+
+        
 
         b main_loop    
     end_main_loop:
@@ -419,3 +426,35 @@ calcola_prezzo_medio_double:
         ldp x29, x30, [sp], #16
         ret
         .size calcola_prezzo_medio_double, (. - calcola_prezzo_medio_double)
+
+.type filtra_per_genere, %function
+filtra_per_genere:
+    stp x29, x30, [sp, #-16]!
+    stp x20, x21, [sp, #-16]!
+    stp x22, x23, [sp, #-16]!
+
+    read_str fmt_prompt_genere
+
+    adr x20, tmp_str // indirizzo della label tmp_str che contiene input, ovvero, il genere
+    ldr x21, =film // indirizzo struttura che contiene i film 
+    ldr w22, n_film  //w22 = numero film   
+    mov w23, #0 //w23 = contatore 
+    add x21, x21, offset_film_genere// indirizzo in cui ho il genere     
+    filtra_per_genere_loop: 
+        cmp w23,w22
+        beq filtra_per_genere_loop_endloop 
+        mov x0,x21
+        bl printf
+        add x21, x21, film_size_aligned 
+        add w23,w23,#1
+        b filtra_per_genere_loop
+
+    filtra_per_genere_loop_endloop:
+
+
+    ldp x22, x23, [sp], #16
+    ldp x20, x21, [sp], #16
+    ldp x29, x30, [sp], #16
+        ret
+        .size filtra_per_genere, (. - filtra_per_genere)
+
