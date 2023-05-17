@@ -29,6 +29,8 @@ fmt_fail_aggiungi_film: .asciz "\nMemoria insufficiente. Eliminare un'film, quin
 fmt_fail_calcola_prezzo_medio: .asciz "\nNessuna film presente.\n\n"
 fmt_scan_int: .asciz "%d"
 fmt_scan_str: .asciz "%127s"
+fmt_scan_titolo: .asciz "%[^\n]"
+fmt_pulisci_buffer: .asciz "%c"
 fmt_prompt_menu: .asciz "> "
 fmt_prompt_titolo: .asciz "Titolo: "
 fmt_prompt_genere: .asciz "Genere: "
@@ -57,6 +59,7 @@ n_film: .word 0
 tmp_str: .skip 64
 tmp_int: .skip 8
 film: .skip film_size_aligned * max_film
+film_temp: .skip max_film * film_size_aligned
 
 
 .macro read_int prompt
@@ -89,6 +92,19 @@ film: .skip film_size_aligned * max_film
     strb wzr, [x0]
 .endm
 
+.macro read_titolo 
+    adr x0, fmt_prompt_titolo
+    bl printf
+
+    adr x0, fmt_pulisci_buffer
+    adr x1, tmp_str
+    bl scanf
+    adr x0, fmt_scan_titolo
+    adr x1, tmp_str
+    bl scanf
+.endm
+
+    
 
 .text
 .type main, %function
@@ -283,7 +299,9 @@ aggiungi_film:
     
     cmp x19, max_film
     bge fail_aggiungi_film
-        read_str fmt_prompt_titolo
+
+        read_titolo
+        //read_str fmt_prompt_titolo
         save_to x20, offset_film_titolo, size_film_titolo
 
         read_str fmt_prompt_genere
