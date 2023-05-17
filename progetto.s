@@ -3,13 +3,13 @@ filename: .asciz "armflix.dat"
 read_mode: .asciz "r"
 write_mode: .asciz "w"
 fmt_menu_title:
-        .asciz "--------------------------------------------------------------------------\n               _   ___ __  __   ___ _    _____  __\n              /_\\ | _ \\  \\/  | | __| |  |_ _\\ \\/ /\n             / _ \\|   / |\\/| | | _|| |__ | | >  < \n            /_/ \\_\\_|_\\_|  |_| |_| |____|___/_/\\_\\\n                                                  \n"
+        .asciz "---------------------------------------------------------------------------------\n               _   ___ __  __   ___ _    _____  __\n              /_\\ | _ \\  \\/  | | __| |  |_ _\\ \\/ /\n             / _ \\|   / |\\/| | | _|| |__ | | >  < \n            /_/ \\_\\_|_\\_|  |_| |_| |____|___/_/\\_\\\n                                                  \n"
 fmt_menu_line:
-    .asciz "--------------------------------------------------------------------------\n"
+    .asciz "---------------------------------------------------------------------------------\n"
 fmt_menu_header:
-    .asciz "  # TITOLO           GENERE               ANNO                     PREZZO\n"
+    .asciz "  # TITOLO                         GENERE             ANNO               PREZZO\n"
 fmt_menu_entry:
-    .asciz "%3d %-16s %-20s %-20s %10d\n"
+    .asciz "%3d %-30s %-18s %-10d %10d\n"
 fmt_menu_options:
     .ascii "1: Aggiungi Film\n"
     .ascii "2: Elimina Film\n"
@@ -50,11 +50,11 @@ n_film: .word 0
 .equ offset_film_titolo, 0
 .equ offset_film_genere, offset_film_titolo + size_film_titolo //30
 .equ offset_film_anno, offset_film_genere + size_film_genere //48
-.equ offset_film_prezzo, offset_film_anno + size_film_anno
+.equ offset_film_prezzo, offset_film_anno + size_film_anno //52
 .equ film_size_aligned, 64
 
 .bss
-tmp_str: .skip 128
+tmp_str: .skip 64
 tmp_int: .skip 8
 film: .skip film_size_aligned * max_film
 
@@ -247,8 +247,8 @@ print_menu:
         adr x0, fmt_menu_entry
         add x1, x19, #1
         add x2, x21, offset_film_titolo
-        add x3, x21, offset_film_genere
-        add x4, x21, offset_film_anno
+        add x3, x21, offset_film_genere        
+        ldr x4, [x21, offset_film_anno]        
         ldr x5, [x21, offset_film_prezzo]
         bl printf
 
@@ -289,13 +289,13 @@ aggiungi_film:
         read_str fmt_prompt_genere
         save_to x20, offset_film_genere, size_film_genere
         
-        read_str fmt_prompt_anno
-        save_to x20, offset_film_anno, size_film_anno
-
+        read_int fmt_prompt_anno
+        str w0, [x20, offset_film_anno]          
+        
         read_int fmt_prompt_prezzo
         str w0, [x20, offset_film_prezzo]      
 
-        add x19, x19, #1
+        add x19, x19, #1 //Incrementa n film
         ldr x20, =n_film
         str x19, [x20]
 
