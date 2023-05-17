@@ -111,47 +111,48 @@ film_temp: .skip max_film * film_size_aligned
 .global main
 main:
     stp x29, x30, [sp, #-16]!
+    stp x20, x21, [sp, #-16]!
 
     bl load_data
 
     main_loop:
         bl print_menu
         read_int fmt_prompt_menu
+        mov x20, x0
         
-        cmp x0, #0
+        cmp x20, #0
         beq end_main_loop
         
-        cmp x0, #1
+        cmp x20, #1
         bne no_aggiungi_film
         bl aggiungi_film
         no_aggiungi_film:
 
-        cmp x0, #2
+        cmp x20, #2
         bne no_elimina_film
         bl elimina_film
         no_elimina_film:
 
-        cmp x0, #3
+        cmp x20, #3
         bne no_filtro_genere
         bl filtra_per_genere
         no_filtro_genere:
       
-        cmp x0, #5
+        cmp x20, #5
         bne no_prezzo_medio_film
         bl calcola_prezzo_medio
         no_prezzo_medio_film:
 
-        cmp x0, #6
+        cmp x20, #6
         bne no_prezzo_medio_double_film
         bl calcola_prezzo_medio_double
-        no_prezzo_medio_double_film:
-
-        
+        no_prezzo_medio_double_film:        
 
         b main_loop    
     end_main_loop:
 
     mov w0, #0
+    ldp x20, x21, [sp], #16
     ldp x29, x30, [sp], #16
     ret
     .size main, (. - main)
