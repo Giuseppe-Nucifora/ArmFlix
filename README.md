@@ -12,7 +12,7 @@ ArmFlix is a TUI (Text-based User Interface) App developed for ARM64 CPU. It is 
 
 4. - [X] File I/O ✔️
 
-5. - [ ] Filter on some type of data (iterative).
+5. - [X] Filter on some type of data (iterative).
 
 6. - [ ] Filter on some type of data (recursive).
 
