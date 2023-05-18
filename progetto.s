@@ -16,16 +16,17 @@ fmt_menu_options:
     .ascii "3: Filtra per Genere (Iterativamente)\n"
     .ascii "4: Filtra per Anno (Ricorsivamente)\n"
     .ascii "5: Mostra Prezzo medio\n"
-    .ascii "6: Scambia due elementi (Id)\n"
-    .ascii "7: Scambio della prima coppia di elementi adiacenti (rispetto al prezzo)\n"
-    .ascii "8: Eliminazione del primo duplicato (rispetto a un attributo numerico)\n"
+    .ascii "6: Mostra Prezzo medio (double)\n"
+    .ascii "7: Scambia due elementi (Id)\n"
+    .ascii "8: Scambio della prima coppia di elementi adiacenti (rispetto al prezzo)\n"
+    .ascii "9: Eliminazione del primo duplicato (rispetto a un attributo numerico)\n"
     .asciz "0: Esci\n"
 
-fmt_prezzo_medio: .asciz "\nPrezzo medio: %.2f\n\n"
+fmt_prezzo_medio: .asciz "\nPrezzo medio: %d\n\n"
+fmt_prezzo_medio_double: .asciz "\nPrezzo medio: %.2f\n\n"
 fmt_fail_save_data: .asciz "\nImpossibile salvere i dati.\n\n"
-fmt_fail_aggiungi_film: .asciz "\nMemoria insufficiente. Eliminare almeno un film, quindi riprovare.\n\n"
-fmt_fail_calcola_prezzo_medio: .asciz "\nNessun film presente.\n\n"
-fmt_continua: .asciz "\nVuoi continuare? Premi 1 per confermare oppure qualsiasi altro numero per terminare il programma\n\n"
+fmt_fail_aggiungi_film: .asciz "\nMemoria insufficiente. Eliminare un'film, quindi riprovare.\n\n"
+fmt_fail_calcola_prezzo_medio: .asciz "\nNessuna film presente.\n\n"
 fmt_scan_int: .asciz "%d"
 fmt_scan_str: .asciz "%127s"
 fmt_scan_titolo: .asciz "%[^\n]"
@@ -40,6 +41,7 @@ fmt_prompt_index: .asciz "# (fuori range per annullare): "
 
 .data
 n_film: .word 0
+n_film_temp: .word 0
 
 .equ max_film, 5
 
@@ -59,6 +61,7 @@ tmp_str: .skip 64
 tmp_int: .skip 8
 film: .skip film_size_aligned * max_film
 film_temp: .skip max_film * film_size_aligned
+
 
 
 .macro read_int prompt
@@ -103,6 +106,7 @@ film_temp: .skip max_film * film_size_aligned
     bl scanf
 .endm
 
+
     
 
 .text
@@ -132,23 +136,22 @@ main:
         bl elimina_film
         no_elimina_film:
 
-        //cmp x20, #3
-        //bne no_filtro_genere
-        //bl filtra_per_genere
-        //no_filtro_genere:
+        cmp x20, #3
+        bne no_filtro_genere
+        bl filtra_per_genere
+        no_filtro_genere:
       
         cmp x20, #5
         bne no_prezzo_medio_film
         bl calcola_prezzo_medio
-        no_prezzo_medio_film: 
-               
-        adr x0, fmt_continua
-        bl printf 
-        read_int fmt_prompt_menu
-        mov x20, x0
-        cmp x20, #1
-        bne end_main_loop
-        b main_loop
+        no_prezzo_medio_film:
+
+        cmp x20, #6
+        bne no_prezzo_medio_double_film
+        bl calcola_prezzo_medio_double
+        no_prezzo_medio_double_film:        
+
+        b main_loop    
     end_main_loop:
 
     mov w0, #0
@@ -370,6 +373,7 @@ elimina_film:
     .size elimina_film, (. - elimina_film)
 
 
+
 .type calcola_prezzo_medio, %function
 calcola_prezzo_medio:
     stp x29, x30, [sp, #-16]!
@@ -378,22 +382,20 @@ calcola_prezzo_medio:
     cmp x0, #0
     beq calcola_prezzo_medio_error
 
-        fmov d1, xzr
+        mov x1, #0
         mov x2, #0
         ldr x3, =film
         add x3, x3, offset_film_prezzo
         calcola_prezzo_medio_loop:
             ldr x4, [x3]
-            ucvtf d4, x4
-            fadd d1, d1, d4
+            add x1, x1, x4
             add x3, x3, film_size_aligned
 
             add x2, x2, #1
             cmp x2, x0
             blt calcola_prezzo_medio_loop
         
-        ucvtf d0, x0
-        fdiv d0, d1, d0
+        udiv x1, x1, x0
         adr x0, fmt_prezzo_medio
         bl printf
 
@@ -408,34 +410,151 @@ calcola_prezzo_medio:
         ret
         .size calcola_prezzo_medio, (. - calcola_prezzo_medio)
 
+
+.type calcola_prezzo_medio_double, %function
+calcola_prezzo_medio_double:
+    stp x29, x30, [sp, #-16]!
+    
+    ldr x0, n_film
+    cmp x0, #0
+    beq calcola_prezzo_medio_double_error
+
+        fmov d1, xzr
+        mov x2, #0
+        ldr x3, =film
+        add x3, x3, offset_film_prezzo
+        calcola_prezzo_medio_double_loop:
+            ldr x4, [x3]
+            ucvtf d4, x4
+            fadd d1, d1, d4
+            add x3, x3, film_size_aligned
+
+            add x2, x2, #1
+            cmp x2, x0
+            blt calcola_prezzo_medio_double_loop
+        
+        ucvtf d0, x0
+        fdiv d0, d1, d0
+        adr x0, fmt_prezzo_medio_double
+        bl printf
+
+        b end_calcola_prezzo_medio_double
+
+    calcola_prezzo_medio_double_error:
+        adr x0, fmt_fail_calcola_prezzo_medio
+        bl printf
+    
+    end_calcola_prezzo_medio_double:
+        ldp x29, x30, [sp], #16
+        ret
+        .size calcola_prezzo_medio_double, (. - calcola_prezzo_medio_double)
+
 .type filtra_per_genere, %function
 filtra_per_genere:
     stp x29, x30, [sp, #-16]!
     stp x20, x21, [sp, #-16]!
     stp x22, x23, [sp, #-16]!
-
+  
     read_str fmt_prompt_genere
-
-    adr x20, tmp_str // indirizzo della label tmp_str che contiene input, ovvero, il genere
+    adr x20, tmp_str //Indirizzo Input genere
     ldr x21, =film // indirizzo struttura che contiene i film 
+    
     ldr w22, n_film  //w22 = numero film   
-    mov w23, #0 //w23 = contatore 
-    add x21, x21, offset_film_genere// indirizzo in cui ho il genere     
-    filtra_per_genere_loop: 
+    mov x23, #0 //w23 = contatore 
+    add x21, x21, offset_film_genere// indirizzo in cui c'e il genere nella struttura dati    
+    filtra_per_genere_loop:     
         cmp w23,w22
         beq filtra_per_genere_loop_endloop 
-        mov x0,x21
-        bl printf
-        add x21, x21, film_size_aligned 
-        add w23,w23,#1
+        
+        ldr x0, =tmp_str //ind
+        mov x1,x21  //ind
+        bl confronta_due_stringhe //restituisce 1 se sono uguali 
+
+        cmp x0,#0
+        beq endif
+        mov x0, x23
+        bl copia_film_in_posizione_in_var_temp       
+
+       
+        endif:     
+
+        add x21, x21, film_size_aligned //incremento l'indirizzo per scandire l'elemento successivo
+        add x23,x23,#1
         b filtra_per_genere_loop
 
     filtra_per_genere_loop_endloop:
 
-
+    
     ldp x22, x23, [sp], #16
     ldp x20, x21, [sp], #16
     ldp x29, x30, [sp], #16
-        ret
-        .size filtra_per_genere, (. - filtra_per_genere)
+    ret
+    .size filtra_per_genere, (. - filtra_per_genere)
+
+.type confronta_due_stringhe, %function
+confronta_due_stringhe:
+    stp x29, x30, [sp, #-16]!
+    stp x20, x21, [sp, #-16]!
+    str x22, [sp, #-16]!
+
+    mov x5, #1 //true
+
+    loop:
+        ldrb w20, [x0]
+        ldrb w21, [x1]
+        cmp w20, #0 //controllo se e non e nessuno carattere
+        beq endloop
+        cmp w21, #0
+        beq endloop
+        
+        cmp w20, w21
+        bne diversi    
+
+        add x0, x0, #1
+        add x1, x1, #1
+        b loop
+    diversi:
+        mov x5,#0 //metti a false
+    endloop:
+
+    mov x0,x5
+    ldr x22,  [sp], #16
+    ldp x20, x21, [sp], #16
+    ldp x29, x30, [sp], #16
+    ret
+    .size confronta_due_stringhe, (. - confronta_due_stringhe)
+
+.type copia_film_in_posizione_in_var_temp %function
+copia_film_in_posizione_in_var_temp:  //copia i dati di un singolo film in una struttura dati temporanea
+    stp x29, x30, [sp, #-16]!
+    str x24, [sp, #-16]!
+    
+    //Parametri della funzione che vengono passati:
+    //x0 = posizione film
+
+    //calcolo indirizzo src della variabile film (vedi: linea 43)
+    ldr x1, =film //parametro indirizzo src memcpy
+    mov x2, film_size_aligned //parametro size src memcpy
+    //calcolo indirizzo di sorgente quale riga andare a copiare 
+    madd x1, x0, x2,x1 //x1 e' indirizzo sorgente
+                //x23 posizione
+    //calcolo indirizzo di destinazione di film_temp (vedi: linea 44)
+    ldr x0, =film_temp   //indirizzo variabile temporanea di destinazione       
+    ldrsw x24, n_film_temp //numero elementi variabile temporanea di destinazione
+    madd x0, x24, x2,x0   // parametro indirizzo destinazione memcpy
+    bl memcpy
+    //incremento n_film_temp che indica il numero di film che contiene la variabile temporanea
+    add x24,x24,#1
+    ldr x1, =n_film_temp
+    str x24, [x1]        
+
+
+    ldr x24, [sp], #16
+    ldp x29, x30, [sp], #16
+    ret
+    .size copia_film_in_posizione_in_var_temp, (. - copia_film_in_posizione_in_var_temp)
+
+
+
+
 
