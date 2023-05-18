@@ -16,17 +16,16 @@ fmt_menu_options:
     .ascii "3: Filtra per Genere (Iterativamente)\n"
     .ascii "4: Filtra per Anno (Ricorsivamente)\n"
     .ascii "5: Mostra Prezzo medio\n"
-    .ascii "6: Mostra Prezzo medio (double)\n"
-    .ascii "7: Scambia due elementi (Id)\n"
-    .ascii "8: Scambio della prima coppia di elementi adiacenti (rispetto al prezzo)\n"
-    .ascii "9: Eliminazione del primo duplicato (rispetto a un attributo numerico)\n"
+    .ascii "6: Scambia due elementi (Id)\n"
+    .ascii "7: Scambio della prima coppia di elementi adiacenti (rispetto al prezzo)\n"
+    .ascii "8: Eliminazione del primo duplicato (rispetto a un attributo numerico)\n"
     .asciz "0: Esci\n"
 
-fmt_prezzo_medio: .asciz "\nPrezzo medio: %d\n\n"
-fmt_prezzo_medio_double: .asciz "\nPrezzo medio: %.2f\n\n"
+fmt_prezzo_medio: .asciz "\nPrezzo medio: %.2f\n\n"
 fmt_fail_save_data: .asciz "\nImpossibile salvere i dati.\n\n"
-fmt_fail_aggiungi_film: .asciz "\nMemoria insufficiente. Eliminare un'film, quindi riprovare.\n\n"
-fmt_fail_calcola_prezzo_medio: .asciz "\nNessuna film presente.\n\n"
+fmt_fail_aggiungi_film: .asciz "\nMemoria insufficiente. Eliminare almeno un film, quindi riprovare.\n\n"
+fmt_fail_calcola_prezzo_medio: .asciz "\nNessun film presente.\n\n"
+fmt_continua: .asciz "\nVuoi continuare? Premi 1 per confermare oppure qualsiasi altro numero per terminare il programma\n\n"
 fmt_scan_int: .asciz "%d"
 fmt_scan_str: .asciz "%127s"
 fmt_scan_titolo: .asciz "%[^\n]"
@@ -133,22 +132,23 @@ main:
         bl elimina_film
         no_elimina_film:
 
-        cmp x20, #3
-        bne no_filtro_genere
-        bl filtra_per_genere
-        no_filtro_genere:
+        //cmp x20, #3
+        //bne no_filtro_genere
+        //bl filtra_per_genere
+        //no_filtro_genere:
       
         cmp x20, #5
         bne no_prezzo_medio_film
         bl calcola_prezzo_medio
-        no_prezzo_medio_film:
-
-        cmp x20, #6
-        bne no_prezzo_medio_double_film
-        bl calcola_prezzo_medio_double
-        no_prezzo_medio_double_film:        
-
-        b main_loop    
+        no_prezzo_medio_film: 
+               
+        adr x0, fmt_continua
+        bl printf 
+        read_int fmt_prompt_menu
+        mov x20, x0
+        cmp x20, #1
+        bne end_main_loop
+        b main_loop
     end_main_loop:
 
     mov w0, #0
@@ -370,7 +370,6 @@ elimina_film:
     .size elimina_film, (. - elimina_film)
 
 
-
 .type calcola_prezzo_medio, %function
 calcola_prezzo_medio:
     stp x29, x30, [sp, #-16]!
@@ -379,20 +378,22 @@ calcola_prezzo_medio:
     cmp x0, #0
     beq calcola_prezzo_medio_error
 
-        mov x1, #0
+        fmov d1, xzr
         mov x2, #0
         ldr x3, =film
         add x3, x3, offset_film_prezzo
         calcola_prezzo_medio_loop:
             ldr x4, [x3]
-            add x1, x1, x4
+            ucvtf d4, x4
+            fadd d1, d1, d4
             add x3, x3, film_size_aligned
 
             add x2, x2, #1
             cmp x2, x0
             blt calcola_prezzo_medio_loop
         
-        udiv x1, x1, x0
+        ucvtf d0, x0
+        fdiv d0, d1, d0
         adr x0, fmt_prezzo_medio
         bl printf
 
@@ -406,45 +407,6 @@ calcola_prezzo_medio:
         ldp x29, x30, [sp], #16
         ret
         .size calcola_prezzo_medio, (. - calcola_prezzo_medio)
-
-
-.type calcola_prezzo_medio_double, %function
-calcola_prezzo_medio_double:
-    stp x29, x30, [sp, #-16]!
-    
-    ldr x0, n_film
-    cmp x0, #0
-    beq calcola_prezzo_medio_double_error
-
-        fmov d1, xzr
-        mov x2, #0
-        ldr x3, =film
-        add x3, x3, offset_film_prezzo
-        calcola_prezzo_medio_double_loop:
-            ldr x4, [x3]
-            ucvtf d4, x4
-            fadd d1, d1, d4
-            add x3, x3, film_size_aligned
-
-            add x2, x2, #1
-            cmp x2, x0
-            blt calcola_prezzo_medio_double_loop
-        
-        ucvtf d0, x0
-        fdiv d0, d1, d0
-        adr x0, fmt_prezzo_medio_double
-        bl printf
-
-        b end_calcola_prezzo_medio_double
-
-    calcola_prezzo_medio_double_error:
-        adr x0, fmt_fail_calcola_prezzo_medio
-        bl printf
-    
-    end_calcola_prezzo_medio_double:
-        ldp x29, x30, [sp], #16
-        ret
-        .size calcola_prezzo_medio_double, (. - calcola_prezzo_medio_double)
 
 .type filtra_per_genere, %function
 filtra_per_genere:
