@@ -116,6 +116,8 @@ main:
     bl load_data
 
     main_loop:
+        ldrsw x0, n_film
+        ldr x1, =film
         bl print_menu
         read_int fmt_prompt_menu
         mov x20, x0
@@ -243,7 +245,11 @@ save_data:
 print_menu:
     stp x29, x30, [sp, #-16]!
     stp x19, x20, [sp, #-16]!
-    stp x21, x22, [sp, #-16]!
+  
+    //x0 numero film da stampare
+    //x1 indirizzo struttura dati in cui sono memorizzati i film
+    mov x19, x0 //conserviamo i parametri per stampare i film, ci servono per la funzione print_film
+    mov x20, x1
 
     adr x0, fmt_menu_title
     bl printf
@@ -254,10 +260,34 @@ print_menu:
     bl printf
     adr x0, fmt_menu_line
     bl printf
+    
+    mov x0, x19 //ripristiniamo i parametri della funzione print_filmy
+    mov x1, x20
+    bl print_film
+
+    adr x0, fmt_menu_line
+    bl printf
+
+    adr x0, fmt_menu_options
+    bl printf
+
+    ldp x19, x20, [sp], #16
+    ldp x29, x30, [sp], #16
+    ret
+    .size print_menu, (. - print_menu)
+
+.type print_film, %function
+print_film:
+    stp x29, x30, [sp, #-16]!
+    stp x19, x20, [sp, #-16]!
+    str x21, [sp, #-16]!
+
+    //x0 numero film da stampare
+    //x1 indirizzo struttura dati in cui sono memorizzati i film
 
     mov x19, #0
-    ldr x20, n_film
-    ldr x21, =film
+    mov x20, x0
+    mov x21, x1
     print_entries_loop:
         cmp x19, x20
         bge end_print_entries_loop
@@ -269,23 +299,20 @@ print_menu:
         ldr x4, [x21, offset_film_anno]        
         ldr x5, [x21, offset_film_prezzo]
         bl printf
-
+        
         add x19, x19, #1
         add x21, x21, film_size_aligned
         b print_entries_loop
     end_print_entries_loop:
 
-    adr x0, fmt_menu_line
-    bl printf
 
-    adr x0, fmt_menu_options
-    bl printf
-
-    ldp x21, x22, [sp], #16
+    ldr x21, [sp], #16
     ldp x19, x20, [sp], #16
     ldp x29, x30, [sp], #16
     ret
-    .size print_menu, (. - print_menu)
+    .size print_film, (. - print_film)
+
+
 
 
 .type aggiungi_film, %function
@@ -444,7 +471,14 @@ filtra_per_genere:
 
     filtra_per_genere_loop_endloop:
 
-    
+    ldrsw x0, n_film_temp
+    ldr x1, =film_temp
+    bl print_menu
+
+    mov w0, #0 //azzera n_film_temp
+    ldr x1, =n_film_temp
+    str w0, [x1]
+
     ldp x22, x23, [sp], #16
     ldp x20, x21, [sp], #16
     ldp x29, x30, [sp], #16
