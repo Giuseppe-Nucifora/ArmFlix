@@ -369,6 +369,10 @@ aggiungi_film:
 elimina_film:
     stp x29, x30, [sp, #-16]!
     
+    ldr x1, n_film
+    cmp x1, #0
+    beq end_elimina_film_error
+
     read_int fmt_prompt_index
 
     cmp x0, 1
@@ -395,6 +399,11 @@ elimina_film:
     str x1, [x0]
 
     bl save_data
+    b end_elimina_film
+
+    end_elimina_film_error:
+        adr x0, fmt_fail_calcola_prezzo_medio
+        bl printf
 
     end_elimina_film:
     
