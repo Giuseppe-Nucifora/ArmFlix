@@ -139,7 +139,12 @@ main:
         bne no_filtro_genere
         bl filtra_per_genere
         no_filtro_genere:
-      
+
+        cmp x20, #4
+        bne no_filtro_ricorsivo
+        bl filtro_per_anno_ricorsivo
+        no_filtro_ricorsivo:
+
         cmp x20, #5
         bne no_prezzo_medio_film
         bl calcola_prezzo_medio
@@ -518,7 +523,7 @@ confronta_due_stringhe:
     ret
     .size confronta_due_stringhe, (. - confronta_due_stringhe)
 
-.type copia_film_in_posizione_in_var_temp %function
+.type copia_film_in_posizione_in_var_temp, %function
 copia_film_in_posizione_in_var_temp:  //copia i dati di un singolo film in una struttura dati temporanea
     stp x29, x30, [sp, #-16]!
     str x24, [sp, #-16]!
@@ -549,3 +554,82 @@ copia_film_in_posizione_in_var_temp:  //copia i dati di un singolo film in una s
     .size copia_film_in_posizione_in_var_temp, (. - copia_film_in_posizione_in_var_temp)
 
 
+.type filtro_per_anno_ricorsivo, %function
+filtro_per_anno_ricorsivo:
+    stp x29, x30, [sp, #-16]!
+    stp x20, x21, [sp, #-16]!
+    stp x22, x23, [sp, #-16]!
+
+    ldr x22, n_film
+    cmp x22, #0
+    beq filtro_ricorsivo_error
+
+    read_int fmt_prompt_anno
+ 
+    mov x1, #0
+    bl filtro_ricorsivo
+    b end_filtro_ricorsivo
+
+    filtro_ricorsivo_error:
+        adr x0, fmt_fail_calcola_prezzo_medio
+        bl printf
+
+    end_filtro_ricorsivo:
+
+    ldp x22, x23, [sp], #16
+    ldp x20, x21, [sp], #16
+    ldp x29, x30, [sp], #16
+    ret 
+    .size filtro_per_anno_ricorsivo, (. - filtro_per_anno_ricorsivo)
+
+.type filtro_ricorsivo, %function
+filtro_ricorsivo:
+    stp x29, x30, [sp, #-16]!
+    stp x20, x21, [sp, #-16]!
+    stp x22, x23, [sp, #-16]!
+
+    mov x20, x0 // anno
+    mov x23, x1 // contato re
+
+    ldr x22, =film // i film
+
+    ldrsw x21, n_film // numero film
+    cmp x23, x21
+    blt caso_ricorsivo 
+
+    caso_base:
+        ldrsw x0, n_film_temp // numero film temporaneo
+        ldr x1, =film_temp // struttura film temporanea
+        bl print_menu
+        b end_ricorsione
+
+    caso_ricorsivo:
+        mov x7, film_size_aligned // dimensione film
+        madd x6, x23, x7, x22 // indirizzo film attuale = contatore * 64 + film
+        mov x4, x6
+        add x6, x6, offset_film_anno // qua ci sta l'anno all'indirizzo film attuale
+
+        ldr w5, [x6] // valore anno
+        cmp w5, w20
+        bne no_copia_film
+
+        copia_film:
+            mov x0, x23
+            bl copia_film_in_posizione_in_var_temp
+
+        no_copia_film:
+            mov x0, x20
+            add x1, x23, #1
+            bl filtro_ricorsivo
+
+
+    end_ricorsione:
+        mov w0, #0 //azzera n_film_temp
+        ldr x1, =n_film_temp
+        str w0, [x1]
+
+    ldp x22, x23, [sp], #16
+    ldp x20, x21, [sp], #16
+    ldp x29, x30, [sp], #16
+    ret 
+    .size filtro_ricorsivo, (. - filtro_ricorsivo)
