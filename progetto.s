@@ -40,10 +40,6 @@ fmt_prompt_prezzo: .asciz "Prezzo: "
 fmt_prompt_index: .asciz "# (fuori range per annullare): "
 fmt_scambio_primo_film: .asciz "Inserire posizione primo film da scambiare: "
 fmt_scambio_secondo_film: .asciz "Inserire posizione secondo6 film da scambiare: "
-fmt_scambio_adiacenti:
-    .ascii "1: Per ordine crescente\n"
-    .ascii "2: Per ordine decrescente\n"
-    .asciz "0: Annulla\n"
 .align 2
 
 .data
@@ -744,47 +740,4 @@ scambia_due_elementi_nella_struttura:
     ldp x29, x30, [sp], #16
     ret
     .size scambia_due_elementi_nella_struttura, (. - scambia_due_elementi_nella_struttura)
-
-.type scambio_elementi_adiacenti, %function
-scambio_elementi_adiacenti:
-    stp x29, x30, [sp, #-16]!
-    stp x21, x22, [sp, #-16]!
-
-    ldrsw x21, n_film
-    cmp x21, #0
-    beq end_scambio_adiacenti_error
-
-    adr x0, fmt_scambio_adiacenti
-    read_int fmt_prompt_menu
-
-    cmp x0, #0
-    beq end_scambio_adiacenti
-
-    cmp x0, #1
-    beq scambio_crescente
-
-    cmp x0, #2
-    beq scambio_decrescente
-
-
-    scambio_crescente:
-
-        b end_scambio_adiacenti
-        svuota_variabile_temporanea
-    
-    scambio_decrescente:
-
-        b end_scambio_adiacenti
-        svuota_variabile_temporanea
-
-    end_scambio_adiacenti_error:
-        adr x0, fmt_fail_calcola_prezzo_medio
-        bl printf
-    
-    end_scambio_adiacenti:
-
-    ldp x21, x22, [sp], #16
-    ldp x29, x30, [sp], #16
-    ret
-    .size scambio_elementi_adiacenti, (. - scambio_elementi_adiacenti)
 
