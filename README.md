@@ -18,7 +18,7 @@ ArmFlix is a TUI (Text-based User Interface) App developed for ARM64 CPU. It is 
 
 7. - [X] Statistic with a result non integer (Average Price)
 
-8. - [ ] Swap elements.
+8. - [X] Swap elements.
 
 9. - [ ] Swap of the first pair of adjacent unordered elements with respect to a numerical attribute.
 

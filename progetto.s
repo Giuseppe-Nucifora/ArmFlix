@@ -25,6 +25,7 @@ fmt_prezzo_medio: .asciz "\nPrezzo medio: %.2f\n\n"
 fmt_fail_save_data: .asciz "\nImpossibile salvere i dati.\n\n"
 fmt_fail_aggiungi_film: .asciz "\nMemoria insufficiente. Eliminare almeno un film, quindi riprovare.\n\n"
 fmt_fail_calcola_prezzo_medio: .asciz "\nNessun film presente.\n\n"
+fmt_fail_less_film: .asciz "\nMeno di due film presenti. Impossibile effetuare uno scambio.\n\n"
 fmt_continua: .asciz "\nPremi 1 per ritornare al menù oppure qualsiasi altro numero per terminare il programma\n\n"
 fmt_scan_int: .asciz "%d"
 fmt_scan_str: .asciz "%127s"
@@ -594,10 +595,9 @@ copia_film_in_posizione_in_var_temp:  //copia i dati di un singolo film in una s
 filtro_per_anno_ricorsivo:
     stp x29, x30, [sp, #-16]!
     stp x20, x21, [sp, #-16]!
-    stp x22, x23, [sp, #-16]!
 
-    ldr x22, n_film
-    cmp x22, #0
+    ldr x20, n_film
+    cmp x20, #0
     beq filtro_ricorsivo_error
 
     read_int fmt_prompt_anno
@@ -612,7 +612,6 @@ filtro_per_anno_ricorsivo:
 
     end_filtro_ricorsivo:
 
-    ldp x22, x23, [sp], #16
     ldp x20, x21, [sp], #16
     ldp x29, x30, [sp], #16
     ret 
@@ -670,9 +669,16 @@ filtro_ricorsivo:
 
 .type scambio_posizione_film, %function
 scambio_posizione_film:
- 
     stp x29, x30, [sp, #-16]!
-    stp x19, x20, [sp, #-16]! 
+    stp x19, x20, [sp, #-16]!
+    str x21, [sp, #-16]!
+
+    ldrsw x21, n_film
+    cmp x21, #0
+    beq scambio_posizione_error
+
+    cmp x21, #1
+    beq scambio_posizione_error_less
  
     read_int fmt_scambio_primo_film         // Legge da Input il numero inserito e stampa la format string del primo scambio
     sub x19, x0, #1                         // Sottrae #1 dal registro w0 per leggere l'indice reale e salvarne il risultato nel registro w19
@@ -684,48 +690,54 @@ scambio_posizione_film:
     bl scambia_due_elementi_nella_struttura
 
     bl save_data
- 
+    b end_scambio_posizione
+
+    scambio_posizione_error:
+        adr x0, fmt_fail_calcola_prezzo_medio
+        bl printf
+        b end_scambio_posizione
+    
+    scambio_posizione_error_less:
+        adr x0, fmt_fail_less_film
+        bl printf
+
+    end_scambio_posizione:
+
+    ldr x21, [sp], #16
     ldp x19, x20, [sp], #16
     ldp x29, x30, [sp], #16
     ret
     .size scambio_posizione_film, (. - scambio_posizione_film)
 
-    .type scambia_due_elementi_nella_struttura, %function
-    scambia_due_elementi_nella_struttura:
-        stp x29, x30, [sp, #-16]!
-        stp x21, x22, [sp, #-16]! 
-       
-
-        //x0 posizione del primo elemento da scambiare 
-        //x1 posizione del secondo elemento da scambiare            
-        mov x21, x0
-        mov x22, x1
-
-        bl copia_film_in_posizione_in_var_temp  //copia il primo elemento nella variabile temporanea
+.type scambia_due_elementi_nella_struttura, %function
+scambia_due_elementi_nella_struttura:
+    stp x29, x30, [sp, #-16]!
+    stp x21, x22, [sp, #-16]! 
     
-        ldr x4, =film
-        mov x2, film_size_aligned //size
-        madd x21, x2, x21, x4                    // Indirizzo primo elemento
-        madd x22, x2, x22, x4                    // Indirizzo secondo elemento
-        mov x0, x21 //x0 destinazione primo elemento
-        mov x1, x22 //x1 sorgente secondo elemento
-        bl memcpy
-        mov x0, x22
-        adr x1, film_temp
-        mov x2, film_size_aligned
-        bl memcpy
-    
-        svuota_variabile_temporanea
 
-        ldp x21, x22, [sp], #16
-        ldp x29, x30, [sp], #16
-        ret
-        .size scambia_due_elementi_nella_struttura, (. - scambia_due_elementi_nella_struttura)
+    //x0 posizione del primo elemento da scambiare 
+    //x1 posizione del secondo elemento da scambiare            
+    mov x21, x0
+    mov x22, x1
 
+    bl copia_film_in_posizione_in_var_temp  //copia il primo elemento nella variabile temporanea
 
+    ldr x4, =film
+    mov x2, film_size_aligned //size
+    madd x21, x2, x21, x4                    // Indirizzo primo elemento
+    madd x22, x2, x22, x4                    // Indirizzo secondo elemento
+    mov x0, x21 //x0 destinazione primo elemento
+    mov x1, x22 //x1 sorgente secondo elemento
+    bl memcpy
+    mov x0, x22
+    adr x1, film_temp
+    mov x2, film_size_aligned
+    bl memcpy
 
+    svuota_variabile_temporanea
 
-
-
-
+    ldp x21, x22, [sp], #16
+    ldp x29, x30, [sp], #16
+    ret
+    .size scambia_due_elementi_nella_struttura, (. - scambia_due_elementi_nella_struttura)
 
