@@ -21,12 +21,16 @@ fmt_menu_options:
     .ascii "8: Eliminazione del primo duplicato (rispetto a un attributo numerico)\n"
     .asciz "0: Esci\n"
 
+fmt_sezione_menu: .asciz "\n--------------------------------- MENÙ ------------------------------------------\n"
+fmt_sezione_filtro_genere: .asciz "\n---------------------------- FILTRO GENERE --------------------------------------\n"
+fmt_sezione_filtro_anno: .asciz "\n----------------------------- FILTRO ANNO ---------------------------------------\n"
+fmt_no_sezione: .asciz ""
 fmt_prezzo_medio: .asciz "\nPrezzo medio: %.2f\n\n"
 fmt_fail_save_data: .asciz "\nImpossibile salvere i dati.\n\n"
 fmt_fail_aggiungi_film: .asciz "\nMemoria insufficiente. Eliminare almeno un film, quindi riprovare.\n\n"
 fmt_fail_calcola_prezzo_medio: .asciz "\nNessun film presente.\n\n"
 fmt_fail_less_film: .asciz "\nMeno di due film presenti. Impossibile effetuare uno scambio.\n\n"
-fmt_continua: .asciz "\nPremi 1 per ritornare al menù oppure qualsiasi altro numero per terminare il programma\n\n"
+fmt_continua: .asciz "\nPremi 1 per ritornare al MENÙ oppure premi qualsiasi altro tasto per TERMINARE il programma.\n\n"
 fmt_scan_int: .asciz "%d"
 fmt_scan_str: .asciz "%127s"
 fmt_scan_titolo: .asciz "%[^\n]"
@@ -37,9 +41,11 @@ fmt_prompt_titolo: .asciz "Titolo: "
 fmt_prompt_genere: .asciz "Genere: "
 fmt_prompt_anno: .asciz "Anno: "
 fmt_prompt_prezzo: .asciz "Prezzo: "
-fmt_prompt_index: .asciz "# (fuori range per annullare): "
+fmt_prompt_index: .asciz "Inserisci posizione film da eliminare (fuori range per annullare): "
 fmt_scambio_primo_film: .asciz "Inserire posizione primo film da scambiare: "
 fmt_scambio_secondo_film: .asciz "Inserire posizione secondo6 film da scambiare: "
+fmt_scambio_effettuato: .asciz "Elemento in posizione %d (Prezzo %d) scambiato con elemento in posizione %d (Prezzo %d)\n"
+fmt_nessuno_scambio: .asciz "\nNessuno scambio effettuato. Gli elementi sono disposti in ordine crescente in base al prezzo.\n"
 .align 2
 
 .data
@@ -72,7 +78,7 @@ film_temp: .skip max_film * film_size_aligned
 
     adr x0, fmt_scan_int
     adr x1, tmp_int
-    bl scanf
+    bl scanf    
 
     ldr x0, tmp_int
 .endm
@@ -129,6 +135,7 @@ main:
         bl printf
         ldrsw x0, n_film
         ldr x1, =film
+        ldr x2, =fmt_sezione_menu
         bl print_film
         bl print_menu
         read_int fmt_prompt_menu
@@ -193,6 +200,11 @@ main:
         bne no_scambio_posizione_film
         bl scambio_posizione_film      
         no_scambio_posizione_film:
+
+        cmp x20, #7
+        bne no_scambio_prezzo
+        bl scambio_prezzo      
+        no_scambio_prezzo:
         
         b main_loop
     end_main_loop:
@@ -287,15 +299,13 @@ save_data:
 .type print_menu, %function
 print_menu:
     stp x29, x30, [sp, #-16]!
-    stp x19, x20, [sp, #-16]!
-  
+        
     adr x0, fmt_menu_line
     bl printf
 
     adr x0, fmt_menu_options
     bl printf
-
-    ldp x19, x20, [sp], #16
+    
     ldp x29, x30, [sp], #16
     ret
     .size print_menu, (. - print_menu)
@@ -304,16 +314,20 @@ print_menu:
 print_film:
     stp x29, x30, [sp, #-16]!
     stp x19, x20, [sp, #-16]!
-    str x21, [sp, #-16]!
+    stp x21, X22, [sp, #-16]!
 
     //x0 numero film da stampare
     //x1 indirizzo struttura dati in cui sono memorizzati i film
+    //x2 indirizzo sezione da visualizzare prima dei film
   
     mov x20, x0
     mov x21, x1
+    mov x22, x2
     
     //stampa titolo
     adr x0, fmt_menu_title
+    bl printf
+    mov x0, x22
     bl printf
     adr x0, fmt_menu_line
     bl printf
@@ -341,7 +355,7 @@ print_film:
     end_print_entries_loop:
 
 
-    ldr x21, [sp], #16
+    ldp x21, x22, [sp], #16
     ldp x19, x20, [sp], #16
     ldp x29, x30, [sp], #16
     ret
@@ -517,6 +531,7 @@ filtra_per_genere:
 
     ldrsw x0, n_film_temp
     ldr x1, =film_temp
+    ldr x2, =fmt_sezione_filtro_genere
     bl print_film
 
     svuota_variabile_temporanea
@@ -635,6 +650,7 @@ filtro_ricorsivo:
     caso_base:
         ldrsw x0, n_film_temp // numero film temporaneo
         ldr x1, =film_temp // struttura film temporanea
+        ldr x2, =fmt_sezione_filtro_anno
         bl print_film
         b end_ricorsione
 
@@ -740,4 +756,96 @@ scambia_due_elementi_nella_struttura:
     ldp x29, x30, [sp], #16
     ret
     .size scambia_due_elementi_nella_struttura, (. - scambia_due_elementi_nella_struttura)
+
+.type scambio_prezzo %function
+scambio_prezzo:
+   
+    stp x29, x30, [sp, #-16]!
+    stp x19, x20, [sp, #-16]!
+    stp x21, x22, [sp, #-16]!
+    stp x23, x24, [sp, #-16]!
+    
+    ldr x20, =film      // indirizzo struttura che contiene i film 
+    ldr x22, n_film     // w22 = numero film  
+
+    cmp x22, #0
+    beq scambio_prezzo_error
+
+    cmp x22, #1
+    beq scambio_prezzo_error_less
+
+
+    sub x22, x22, #1         // iterare da 0 a (n_film)-1 (per evitare overflow)
+    mov x23, #0         // contatore 
+    mov x0,#0
+    mov x24, #0
+    
+    scambio_prezzo_loop:     
+        cmp x23,x22
+        beq scambio_prezzo_loop_endloop 
+        
+        
+        // Registri temporanei
+        add x8, x20, offset_film_prezzo // Indirizzo del prezzo i
+        add x9, x8, film_size_aligned   // Indirizzo del prezzo i+1 (prezzo successivo)
+
+        // Ottengo i prezzi 
+        ldrsw x19, [x8] // prezzo1 
+        ldrsw x21, [x9] // prezzo2
+
+        // confronto tra prezzo1 e prezzo2
+        cmp x19, x21    
+        ble end_if       
+
+        // scambia prezzo, invocare funzione di matteo
+        // Store the least-signiﬁcant byte from register x12 into Mem[x2]. strb x12, [x2]
+
+        mov x0, x23
+        add x1, x23, #1       
+
+        bl scambia_due_elementi_nella_struttura
+        mov x24, #1
+        bl save_data  
+
+        adr x0, fmt_scambio_effettuato
+        mov x1, x23
+        add x1, x1, #1        
+        mov x2, x19
+        add x3, x1, #1
+        mov x4, x21
+        bl printf
+
+        b scambio_prezzo_loop_endloop
+       
+        end_if:     
+            add x20, x20, film_size_aligned // incremento l'indirizzo per scandire l'elemento successivo
+            add x23, x23, #1                // incremento il contatore
+            b scambio_prezzo_loop           // torno nel loop
+
+
+    scambio_prezzo_error:
+        adr x0, fmt_fail_calcola_prezzo_medio
+        bl printf
+        b scambio_prezzo_loop_endloop
+    
+    scambio_prezzo_error_less:
+        adr x0, fmt_fail_less_film
+        bl printf
+
+    scambio_prezzo_loop_endloop:
+    cmp x24, #0
+    bne no_nessuno_scambio
+    adr x0, fmt_nessuno_scambio
+    bl printf
+    no_nessuno_scambio:
+
+    ldp x23, x24, [sp], #16
+    ldp x21, x22, [sp], #16
+    ldp x19, x20, [sp], #16
+    ldp x29, x30, [sp], #16      
+   
+    ret
+    .size scambio_prezzo, (. - scambio_prezzo)
+
+
 
