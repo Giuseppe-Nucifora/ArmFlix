@@ -25,6 +25,7 @@ fmt_prezzo_medio: .asciz "\nPrezzo medio: %.2f\n\n"
 fmt_fail_save_data: .asciz "\nImpossibile salvere i dati.\n\n"
 fmt_fail_aggiungi_film: .asciz "\nMemoria insufficiente. Eliminare almeno un film, quindi riprovare.\n\n"
 fmt_fail_calcola_prezzo_medio: .asciz "\nNessun film presente.\n\n"
+fmt_fail_less_film: .asciz "\nMeno di due film presenti. Impossibile effetuare uno scambio.\n\n"
 fmt_continua: .asciz "\nPremi 1 per ritornare al menù oppure qualsiasi altro numero per terminare il programma\n\n"
 fmt_scan_int: .asciz "%d"
 fmt_scan_str: .asciz "%127s"
@@ -679,6 +680,9 @@ scambio_posizione_film:
     ldrsw x21, n_film
     cmp x21, #0
     beq scambio_posizione_error
+
+    cmp x21, #1
+    beq scambio_posizione_error_less
  
     read_int fmt_scambio_primo_film         // Legge da Input il numero inserito e stampa la format string del primo scambio
     sub x19, x0, #1                         // Sottrae #1 dal registro w0 per leggere l'indice reale e salvarne il risultato nel registro w19
@@ -694,6 +698,11 @@ scambio_posizione_film:
 
     scambio_posizione_error:
         adr x0, fmt_fail_calcola_prezzo_medio
+        bl printf
+        b end_scambio_posizione
+    
+    scambio_posizione_error_less:
+        adr x0, fmt_fail_less_film
         bl printf
 
     end_scambio_posizione:
@@ -777,4 +786,5 @@ scambio_elementi_adiacenti:
     ldp x21, x22, [sp], #16
     ldp x29, x30, [sp], #16
     ret
-    .size scambio_elementi_adiacenti, (. - scambia_due_elementi_nella_struttura)
+    .size scambio_elementi_adiacenti, (. - scambio_elementi_adiacenti)
+
