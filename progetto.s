@@ -16,7 +16,7 @@ fmt_menu_options:
     .ascii "3: Filtra per Genere (Iterativamente)\n"
     .ascii "4: Filtra per Anno (Ricorsivamente)\n"
     .ascii "5: Mostra Prezzo medio\n"
-    .ascii "6: Scambia due elementi (Id)\n"
+    .ascii "6: Scambia posizione tra due elementi\n"
     .ascii "7: Scambio della prima coppia di elementi adiacenti (rispetto al prezzo)\n"
     .ascii "8: Eliminazione del primo duplicato (rispetto a un attributo numerico)\n"
     .asciz "0: Esci\n"
@@ -25,17 +25,20 @@ fmt_prezzo_medio: .asciz "\nPrezzo medio: %.2f\n\n"
 fmt_fail_save_data: .asciz "\nImpossibile salvere i dati.\n\n"
 fmt_fail_aggiungi_film: .asciz "\nMemoria insufficiente. Eliminare almeno un film, quindi riprovare.\n\n"
 fmt_fail_calcola_prezzo_medio: .asciz "\nNessun film presente.\n\n"
-fmt_continua: .asciz "\nVuoi continuare? Premi 1 per confermare oppure qualsiasi altro numero per terminare il programma\n\n"
+fmt_continua: .asciz "\nPremi 1 per ritornare al menù oppure qualsiasi altro numero per terminare il programma\n\n"
 fmt_scan_int: .asciz "%d"
 fmt_scan_str: .asciz "%127s"
 fmt_scan_titolo: .asciz "%[^\n]"
 fmt_pulisci_buffer: .asciz "%c"
 fmt_prompt_menu: .asciz "> "
+fmt_spaziatura: .asciz "\n\n\n"
 fmt_prompt_titolo: .asciz "Titolo: "
 fmt_prompt_genere: .asciz "Genere: "
 fmt_prompt_anno: .asciz "Anno: "
 fmt_prompt_prezzo: .asciz "Prezzo: "
 fmt_prompt_index: .asciz "# (fuori range per annullare): "
+fmt_scambio_primo_film: .asciz "Inserire posizione primo film da scambiare: "
+fmt_scambio_secondo_film: .asciz "Inserire posizione secondo6 film da scambiare: "
 .align 2
 
 .data
@@ -104,6 +107,11 @@ film_temp: .skip max_film * film_size_aligned
     bl scanf
 .endm
 
+.macro svuota_variabile_temporanea
+    mov w0, #0 //azzera n_film_temp
+    ldr x1, =n_film_temp
+    str w0, [x1] 
+.endm
     
 
 .text
@@ -116,8 +124,11 @@ main:
     bl load_data
 
     main_loop:
+        adr x0, fmt_spaziatura
+        bl printf
         ldrsw x0, n_film
         ldr x1, =film
+        bl print_film
         bl print_menu
         read_int fmt_prompt_menu
         mov x20, x0
@@ -137,25 +148,51 @@ main:
 
         cmp x20, #3
         bne no_filtro_genere
-        bl filtra_per_genere
+        b blocco_filtra_genere
+        blocco_filtra_genere:
+            bl filtra_per_genere          
+                        
+            adr x0, fmt_continua
+            bl printf 
+            read_int fmt_prompt_menu
+            mov x20, x0
+            cmp x20, #1
+            bne end_main_loop
         no_filtro_genere:
 
         cmp x20, #4
         bne no_filtro_ricorsivo
-        bl filtro_per_anno_ricorsivo
+        b blocco_filtro_ricorsivo
+        blocco_filtro_ricorsivo:
+            bl filtro_per_anno_ricorsivo
+
+            adr x0, fmt_continua
+            bl printf 
+            read_int fmt_prompt_menu
+            mov x20, x0
+            cmp x20, #1
+            bne end_main_loop
         no_filtro_ricorsivo:
 
         cmp x20, #5
         bne no_prezzo_medio_film
-        bl calcola_prezzo_medio
+        b blocco_prezzo_medio
+        blocco_prezzo_medio:
+            bl calcola_prezzo_medio
+
+            adr x0, fmt_continua
+            bl printf 
+            read_int fmt_prompt_menu
+            mov x20, x0
+            cmp x20, #1
+            bne end_main_loop
         no_prezzo_medio_film: 
-               
-        adr x0, fmt_continua
-        bl printf 
-        read_int fmt_prompt_menu
-        mov x20, x0
-        cmp x20, #1
-        bne end_main_loop
+
+        cmp x20, #6
+        bne no_scambio_posizione_film
+        bl scambio_posizione_film      
+        no_scambio_posizione_film:
+        
         b main_loop
     end_main_loop:
 
@@ -251,25 +288,6 @@ print_menu:
     stp x29, x30, [sp, #-16]!
     stp x19, x20, [sp, #-16]!
   
-    //x0 numero film da stampare
-    //x1 indirizzo struttura dati in cui sono memorizzati i film
-    mov x19, x0 //conserviamo i parametri per stampare i film, ci servono per la funzione print_film
-    mov x20, x1
-
-    adr x0, fmt_menu_title
-    bl printf
-
-    adr x0, fmt_menu_line
-    bl printf
-    adr x0, fmt_menu_header
-    bl printf
-    adr x0, fmt_menu_line
-    bl printf
-    
-    mov x0, x19 //ripristiniamo i parametri della funzione print_filmy
-    mov x1, x20
-    bl print_film
-
     adr x0, fmt_menu_line
     bl printf
 
@@ -289,10 +307,21 @@ print_film:
 
     //x0 numero film da stampare
     //x1 indirizzo struttura dati in cui sono memorizzati i film
-
-    mov x19, #0
+  
     mov x20, x0
     mov x21, x1
+    
+    //stampa titolo
+    adr x0, fmt_menu_title
+    bl printf
+    adr x0, fmt_menu_line
+    bl printf
+    adr x0, fmt_menu_header
+    bl printf
+    adr x0, fmt_menu_line
+    bl printf
+    
+    mov x19, #0
     print_entries_loop:
         cmp x19, x20
         bge end_print_entries_loop
@@ -487,11 +516,9 @@ filtra_per_genere:
 
     ldrsw x0, n_film_temp
     ldr x1, =film_temp
-    bl print_menu
+    bl print_film
 
-    mov w0, #0 //azzera n_film_temp
-    ldr x1, =n_film_temp
-    str w0, [x1]
+    svuota_variabile_temporanea
 
     ldp x22, x23, [sp], #16
     ldp x20, x21, [sp], #16
@@ -609,7 +636,7 @@ filtro_ricorsivo:
     caso_base:
         ldrsw x0, n_film_temp // numero film temporaneo
         ldr x1, =film_temp // struttura film temporanea
-        bl print_menu
+        bl print_film
         b end_ricorsione
 
     caso_ricorsivo:
@@ -633,12 +660,72 @@ filtro_ricorsivo:
 
 
     end_ricorsione:
-        mov w0, #0 //azzera n_film_temp
-        ldr x1, =n_film_temp
-        str w0, [x1]
+        svuota_variabile_temporanea
 
     ldp x22, x23, [sp], #16
     ldp x20, x21, [sp], #16
     ldp x29, x30, [sp], #16
     ret 
     .size filtro_ricorsivo, (. - filtro_ricorsivo)
+
+.type scambio_posizione_film, %function
+scambio_posizione_film:
+ 
+    stp x29, x30, [sp, #-16]!
+    stp x19, x20, [sp, #-16]! 
+ 
+    read_int fmt_scambio_primo_film         // Legge da Input il numero inserito e stampa la format string del primo scambio
+    sub x19, x0, #1                         // Sottrae #1 dal registro w0 per leggere l'indice reale e salvarne il risultato nel registro w19
+	read_int fmt_scambio_secondo_film       // Leggie da Input il numero inserito e stampa la format string del secondo scambio
+	sub x20, x0, #1                         // Sottrae 1 dal registro w0 per leggere l'indice reale e salvarne il risultato nel registro w20
+    
+    mov x0, x19
+    mov x1, x20
+    bl scambia_due_elementi_nella_struttura
+
+    bl save_data
+ 
+    ldp x19, x20, [sp], #16
+    ldp x29, x30, [sp], #16
+    ret
+    .size scambio_posizione_film, (. - scambio_posizione_film)
+
+    .type scambia_due_elementi_nella_struttura, %function
+    scambia_due_elementi_nella_struttura:
+        stp x29, x30, [sp, #-16]!
+        stp x21, x22, [sp, #-16]! 
+       
+
+        //x0 posizione del primo elemento da scambiare 
+        //x1 posizione del secondo elemento da scambiare            
+        mov x21, x0
+        mov x22, x1
+
+        bl copia_film_in_posizione_in_var_temp  //copia il primo elemento nella variabile temporanea
+    
+        ldr x4, =film
+        mov x2, film_size_aligned //size
+        madd x21, x2, x21, x4                    // Indirizzo primo elemento
+        madd x22, x2, x22, x4                    // Indirizzo secondo elemento
+        mov x0, x21 //x0 destinazione primo elemento
+        mov x1, x22 //x1 sorgente secondo elemento
+        bl memcpy
+        mov x0, x22
+        adr x1, film_temp
+        mov x2, film_size_aligned
+        bl memcpy
+    
+        svuota_variabile_temporanea
+
+        ldp x21, x22, [sp], #16
+        ldp x29, x30, [sp], #16
+        ret
+        .size scambia_due_elementi_nella_struttura, (. - scambia_due_elementi_nella_struttura)
+
+
+
+
+
+
+
+
