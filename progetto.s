@@ -39,6 +39,10 @@ fmt_prompt_prezzo: .asciz "Prezzo: "
 fmt_prompt_index: .asciz "# (fuori range per annullare): "
 fmt_scambio_primo_film: .asciz "Inserire posizione primo film da scambiare: "
 fmt_scambio_secondo_film: .asciz "Inserire posizione secondo6 film da scambiare: "
+fmt_scambio_adiacenti:
+    .ascii "1: Per ordine crescente\n"
+    .ascii "2: Per ordine decrescente\n"
+    .asciz "0: Annulla\n"
 .align 2
 
 .data
@@ -594,10 +598,9 @@ copia_film_in_posizione_in_var_temp:  //copia i dati di un singolo film in una s
 filtro_per_anno_ricorsivo:
     stp x29, x30, [sp, #-16]!
     stp x20, x21, [sp, #-16]!
-    stp x22, x23, [sp, #-16]!
 
-    ldr x22, n_film
-    cmp x22, #0
+    ldr x20, n_film
+    cmp x20, #0
     beq filtro_ricorsivo_error
 
     read_int fmt_prompt_anno
@@ -612,7 +615,6 @@ filtro_per_anno_ricorsivo:
 
     end_filtro_ricorsivo:
 
-    ldp x22, x23, [sp], #16
     ldp x20, x21, [sp], #16
     ldp x29, x30, [sp], #16
     ret 
@@ -670,9 +672,13 @@ filtro_ricorsivo:
 
 .type scambio_posizione_film, %function
 scambio_posizione_film:
- 
     stp x29, x30, [sp, #-16]!
-    stp x19, x20, [sp, #-16]! 
+    stp x19, x20, [sp, #-16]!
+    str x21, [sp, #-16]!
+
+    ldrsw x21, n_film
+    cmp x21, #0
+    beq scambio_posizione_error
  
     read_int fmt_scambio_primo_film         // Legge da Input il numero inserito e stampa la format string del primo scambio
     sub x19, x0, #1                         // Sottrae #1 dal registro w0 per leggere l'indice reale e salvarne il risultato nel registro w19
@@ -684,48 +690,91 @@ scambio_posizione_film:
     bl scambia_due_elementi_nella_struttura
 
     bl save_data
- 
+    b end_scambio_posizione
+
+    scambio_posizione_error:
+        adr x0, fmt_fail_calcola_prezzo_medio
+        bl printf
+
+    end_scambio_posizione:
+
+    ldr x21, [sp], #16
     ldp x19, x20, [sp], #16
     ldp x29, x30, [sp], #16
     ret
     .size scambio_posizione_film, (. - scambio_posizione_film)
 
-    .type scambia_due_elementi_nella_struttura, %function
-    scambia_due_elementi_nella_struttura:
-        stp x29, x30, [sp, #-16]!
-        stp x21, x22, [sp, #-16]! 
-       
-
-        //x0 posizione del primo elemento da scambiare 
-        //x1 posizione del secondo elemento da scambiare            
-        mov x21, x0
-        mov x22, x1
-
-        bl copia_film_in_posizione_in_var_temp  //copia il primo elemento nella variabile temporanea
+.type scambia_due_elementi_nella_struttura, %function
+scambia_due_elementi_nella_struttura:
+    stp x29, x30, [sp, #-16]!
+    stp x21, x22, [sp, #-16]! 
     
-        ldr x4, =film
-        mov x2, film_size_aligned //size
-        madd x21, x2, x21, x4                    // Indirizzo primo elemento
-        madd x22, x2, x22, x4                    // Indirizzo secondo elemento
-        mov x0, x21 //x0 destinazione primo elemento
-        mov x1, x22 //x1 sorgente secondo elemento
-        bl memcpy
-        mov x0, x22
-        adr x1, film_temp
-        mov x2, film_size_aligned
-        bl memcpy
+
+    //x0 posizione del primo elemento da scambiare 
+    //x1 posizione del secondo elemento da scambiare            
+    mov x21, x0
+    mov x22, x1
+
+    bl copia_film_in_posizione_in_var_temp  //copia il primo elemento nella variabile temporanea
+
+    ldr x4, =film
+    mov x2, film_size_aligned //size
+    madd x21, x2, x21, x4                    // Indirizzo primo elemento
+    madd x22, x2, x22, x4                    // Indirizzo secondo elemento
+    mov x0, x21 //x0 destinazione primo elemento
+    mov x1, x22 //x1 sorgente secondo elemento
+    bl memcpy
+    mov x0, x22
+    adr x1, film_temp
+    mov x2, film_size_aligned
+    bl memcpy
+
+    svuota_variabile_temporanea
+
+    ldp x21, x22, [sp], #16
+    ldp x29, x30, [sp], #16
+    ret
+    .size scambia_due_elementi_nella_struttura, (. - scambia_due_elementi_nella_struttura)
+
+.type scambio_elementi_adiacenti, %function
+scambio_elementi_adiacenti:
+    stp x29, x30, [sp, #-16]!
+    stp x21, x22, [sp, #-16]!
+
+    ldrsw x21, n_film
+    cmp x21, #0
+    beq end_scambio_adiacenti_error
+
+    adr x0, fmt_scambio_adiacenti
+    read_int fmt_prompt_menu
+
+    cmp x0, #0
+    beq end_scambio_adiacenti
+
+    cmp x0, #1
+    beq scambio_crescente
+
+    cmp x0, #2
+    beq scambio_decrescente
+
+
+    scambio_crescente:
+
+        b end_scambio_adiacenti
+        svuota_variabile_temporanea
     
+    scambio_decrescente:
+
+        b end_scambio_adiacenti
         svuota_variabile_temporanea
 
-        ldp x21, x22, [sp], #16
-        ldp x29, x30, [sp], #16
-        ret
-        .size scambia_due_elementi_nella_struttura, (. - scambia_due_elementi_nella_struttura)
+    end_scambio_adiacenti_error:
+        adr x0, fmt_fail_calcola_prezzo_medio
+        bl printf
+    
+    end_scambio_adiacenti:
 
-
-
-
-
-
-
-
+    ldp x21, x22, [sp], #16
+    ldp x29, x30, [sp], #16
+    ret
+    .size scambio_elementi_adiacenti, (. - scambia_due_elementi_nella_struttura)
