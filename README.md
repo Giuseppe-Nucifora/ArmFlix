@@ -20,7 +20,7 @@ ArmFlix is a TUI (Text-based User Interface) App developed for ARM64 CPU. It is 
 
 8. - [X] Swap elements.
 
-9. - [ ] Swap of the first pair of adjacent unordered elements with respect to a numerical attribute.
+9. - [X] Swap of the first pair of adjacent unordered elements with respect to a numerical attribute.
 
 10. - [ ] Elimination of the first duplicate (intended as an element equal to the previous one) with respect to a numerical attribute.
 
