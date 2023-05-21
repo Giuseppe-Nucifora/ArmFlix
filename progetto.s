@@ -947,8 +947,7 @@ elimina_duplicato:
 
         uguali:
         mov x22, #1
-        sub x0, x19, offset_film_anno
-        sub x0, x0, film_size_aligned // indirizzo destinazione
+        sub x0, x19, offset_film_anno        
         add x1, x0, film_size_aligned // indirizzo sorgente
 
         sub x24, x20, x21   //ldr
