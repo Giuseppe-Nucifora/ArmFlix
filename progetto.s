@@ -17,9 +17,9 @@ fmt_menu_options:
     .ascii "4: Filtra per Anno (Ricorsivamente)\n"
     .ascii "5: Mostra Prezzo medio\n"
     .ascii "6: Scambia posizione tra due elementi\n"
-    .ascii "7: Scambio della prima coppia di elementi adiacenti (rispetto al prezzo)\n"
-    .ascii "8: Eliminazione del primo duplicato (rispetto a un attributo numerico)\n"
-    .asciz "0: Esci\n"
+    .ascii "7: Scambio della prima coppia di elementi adiacenti non ordinati rispetto al prezzo (ordine crescente)\n"
+    .ascii "8: Eliminazione del primo duplicato (inteso come elemento uguale al precedente) rispetto all'anno\n"
+    .asciz "0: ESCI\n"
 
 fmt_sezione_menu: .asciz "\n--------------------------------| MENÙ |-----------------------------------------\n"
 fmt_sezione_filtro_genere: .asciz "\n---------------------------| FILTRO GENERE |-------------------------------------\n"
@@ -28,9 +28,9 @@ fmt_no_sezione: .asciz ""
 fmt_prezzo_medio: .asciz "\nPrezzo medio: %.2f\n\n"
 fmt_fail_save_data: .asciz "\nImpossibile salvere i dati.\n\n"
 fmt_fail_aggiungi_film: .asciz "\nMemoria insufficiente. Eliminare almeno un film, quindi riprovare.\n\n"
-fmt_fail_calcola_prezzo_medio: .asciz "\nNessun film presente.\n\n"
+fmt_nessun_film_presente: .asciz "\nNessun film presente.\n\n"
 fmt_fail_less_film: .asciz "\nMeno di due film presenti. Impossibile effetuare l'operazione.\n\n"
-fmt_continua: .asciz "\nPremi 1 per ritornare al MENÙ oppure premi qualsiasi altro tasto per TERMINARE il programma.\n\n"
+fmt_continua: .asciz "\nPremi 1 per ritornare al MENÙ oppure premi qualsiasi altro numero per TERMINARE il programma.\n\n"
 fmt_scan_int: .asciz "%d"
 fmt_scan_str: .asciz "%127s"
 fmt_scan_titolo: .asciz "%[^\n]"
@@ -43,12 +43,14 @@ fmt_prompt_anno: .asciz "Anno: "
 fmt_prompt_prezzo: .asciz "Prezzo: "
 fmt_prompt_index: .asciz "Inserisci posizione film da eliminare (fuori range per annullare): "
 fmt_scambio_primo_film: .asciz "Inserire posizione primo film da scambiare: "
-fmt_scambio_secondo_film: .asciz "Inserire posizione secondo6 film da scambiare: "
+fmt_scambio_secondo_film: .asciz "Inserire posizione secondo film da scambiare: "
 fmt_scambio_effettuato: .asciz "Elemento in posizione %d (Prezzo %d) scambiato con elemento in posizione %d (Prezzo %d).\n"
 fmt_eliminazione_effettuata: .asciz "Elemento in posizione %d (Anno %d) eliminato.\n"
 fmt_nessuna_eliminazione: .asciz "\nNessun duplicato trovato.\n"
 fmt_nessuno_scambio: .asciz "\nNessuno scambio effettuato. Gli elementi sono disposti in ordine crescente in base al prezzo.\n"
 fmt_errore_inserisci_numero: .asciz "\nInserisci un numero.\n\n"
+fmt_inserisci_un_valido: .asciz "\nInserisci un numero compreso nel range delle posizioni.\n"
+fmt_numeri_uguali: .asciz "\nLe due posizioni inserite sono uguali!\n"
 .align 2
 
 .data
@@ -111,12 +113,28 @@ film_temp: .skip max_film * film_size_aligned
     bl scanf
 .endm
 
+.macro stampa_film numero_film, struttura_film, fmt_sezione
+    ldrsw x0, \numero_film
+    adr x1, \struttura_film
+    adr x2, \fmt_sezione
+    bl stampa_tutti_i_film
+.endm
+
 .macro svuota_variabile_temporanea
     mov w0, #0 //azzera n_film_temp
     ldr x1, =n_film_temp
     str w0, [x1] 
 .endm
     
+.macro stampa_messaggio_premi_uno_per_continuare
+    adr x0, fmt_continua
+    bl printf 
+    read_int fmt_prompt_menu
+    mov x20, x0
+    cmp x20, #1
+    bne end_main_loop
+.endm
+
 
 .text
 .type main, %function
@@ -130,11 +148,9 @@ main:
     main_loop:
         adr x0, fmt_spaziatura
         bl printf
-        ldrsw x0, n_film
-        ldr x1, =film
-        ldr x2, =fmt_sezione_menu
-        bl print_film
+        stampa_film n_film, film, fmt_sezione_menu
         bl print_menu
+
         read_int fmt_prompt_menu
         mov x20, x0
         
@@ -155,14 +171,8 @@ main:
         bne no_filtro_genere
         b blocco_filtra_genere
         blocco_filtra_genere:
-            bl filtra_per_genere          
-                        
-            adr x0, fmt_continua
-            bl printf 
-            read_int fmt_prompt_menu
-            mov x20, x0
-            cmp x20, #1
-            bne end_main_loop
+            bl filtra_per_genere
+            stampa_messaggio_premi_uno_per_continuare
         no_filtro_genere:
 
         cmp x20, #4
@@ -170,13 +180,7 @@ main:
         b blocco_filtro_ricorsivo
         blocco_filtro_ricorsivo:
             bl filtro_per_anno_ricorsivo
-
-            adr x0, fmt_continua
-            bl printf 
-            read_int fmt_prompt_menu
-            mov x20, x0
-            cmp x20, #1
-            bne end_main_loop
+            stampa_messaggio_premi_uno_per_continuare
         no_filtro_ricorsivo:
 
         cmp x20, #5
@@ -184,13 +188,7 @@ main:
         b blocco_prezzo_medio
         blocco_prezzo_medio:
             bl calcola_prezzo_medio
-
-            adr x0, fmt_continua
-            bl printf 
-            read_int fmt_prompt_menu
-            mov x20, x0
-            cmp x20, #1
-            bne end_main_loop
+            stampa_messaggio_premi_uno_per_continuare
         no_prezzo_medio_film: 
 
         cmp x20, #6
@@ -218,7 +216,9 @@ main:
     .size main, (. - main)
 
 .type scan_int, %function
-scan_int: 
+scan_int:                       
+//LEGGE IN INPUT E STAMPA UN MESSAGGIO DI ERRORE SE IL VALORE NON È UN NUMERO 
+//E LEGGE DI NUOVO FINCHE NON SI INSERISCE UN NUMERO
     stp x29, x30, [sp, #-16]!
     str x19, [sp, #-16]!
     //x0 prompt
@@ -343,8 +343,8 @@ print_menu:
     ret
     .size print_menu, (. - print_menu)
 
-.type print_film, %function
-print_film:
+.type stampa_tutti_i_film, %function
+stampa_tutti_i_film:
     stp x29, x30, [sp, #-16]!
     stp x19, x20, [sp, #-16]!
     stp x21, X22, [sp, #-16]!
@@ -392,7 +392,7 @@ print_film:
     ldp x19, x20, [sp], #16
     ldp x29, x30, [sp], #16
     ret
-    .size print_film, (. - print_film)
+    .size stampa_tutti_i_film, (. - stampa_tutti_i_film)
 
 
 
@@ -463,7 +463,8 @@ elimina_film:
     sub x6, x6, x0  // number of auto after selected index
     mov x7, film_size_aligned
     ldr x0, =film
-    mul x1, x5, x7  // offset to dest
+    mul x1, x5, x7  // offset to dest  
+
     add x0, x0, x1  // dest
     add x1, x0, x7  // source
     mul x2, x6, x7  // bytes to copy
@@ -478,7 +479,7 @@ elimina_film:
     b end_elimina_film
 
     end_elimina_film_error:
-        adr x0, fmt_fail_calcola_prezzo_medio
+        adr x0, fmt_nessun_film_presente
         bl printf
 
     end_elimina_film:
@@ -518,7 +519,7 @@ calcola_prezzo_medio:
         b end_calcola_prezzo_medio
 
     calcola_prezzo_medio_error:
-        adr x0, fmt_fail_calcola_prezzo_medio
+        adr x0, fmt_nessun_film_presente
         bl printf
     
     end_calcola_prezzo_medio:
@@ -532,11 +533,14 @@ filtra_per_genere:
     stp x20, x21, [sp, #-16]!
     stp x22, x23, [sp, #-16]!
   
+    ldr w22, n_film  //w22 = numero film 
+    cmp w22, #0
+    beq filtro_genere_error
+
     read_str fmt_prompt_genere
     adr x20, tmp_str //Indirizzo Input genere
-    ldr x21, =film // indirizzo struttura che contiene i film 
-    
-    ldr w22, n_film  //w22 = numero film   
+    ldr x21, =film // indirizzo struttura che contiene i film     
+
     mov x23, #0 //w23 = contatore 
     add x21, x21, offset_film_genere// indirizzo in cui c'e il genere nella struttura dati    
     filtra_per_genere_loop:     
@@ -550,9 +554,7 @@ filtra_per_genere:
         cmp x0,#0
         beq endif
         mov x0, x23
-        bl copia_film_in_posizione_in_var_temp       
-
-       
+        bl copia_film_in_posizione_in_var_temp 
         endif:     
 
         add x21, x21, film_size_aligned //incremento l'indirizzo per scandire l'elemento successivo
@@ -561,12 +563,16 @@ filtra_per_genere:
 
     filtra_per_genere_loop_endloop:
 
-    ldrsw x0, n_film_temp
-    ldr x1, =film_temp
-    ldr x2, =fmt_sezione_filtro_genere
-    bl print_film
+    stampa_film n_film_temp, film_temp, fmt_sezione_filtro_genere
 
     svuota_variabile_temporanea
+    b end_filtro_genere
+
+    filtro_genere_error:
+        adr x0, fmt_nessun_film_presente
+        bl printf
+
+    end_filtro_genere:
 
     ldp x22, x23, [sp], #16
     ldp x20, x21, [sp], #16
@@ -580,7 +586,7 @@ confronta_due_stringhe:
     stp x20, x21, [sp, #-16]!
     str x22, [sp, #-16]!
 
-    mov x5, #1 //true
+    mov x5, #1 //uno
 
     loop:
         ldrb w20, [x0]
@@ -597,7 +603,7 @@ confronta_due_stringhe:
         add x1, x1, #1
         b loop
     diversi:
-        mov x5,#0 //metti a false
+        mov x5,#0 //metti a zero
     endloop:
 
     mov x0,x5
@@ -654,7 +660,7 @@ filtro_per_anno_ricorsivo:
     b end_filtro_ricorsivo
 
     filtro_ricorsivo_error:
-        adr x0, fmt_fail_calcola_prezzo_medio
+        adr x0, fmt_nessun_film_presente
         bl printf
 
     end_filtro_ricorsivo:
@@ -683,7 +689,7 @@ filtro_ricorsivo:
         ldrsw x0, n_film_temp // numero film temporaneo
         ldr x1, =film_temp // struttura film temporanea
         ldr x2, =fmt_sezione_filtro_anno
-        bl print_film
+        bl stampa_tutti_i_film
         b end_ricorsione
 
     caso_ricorsivo:
@@ -729,10 +735,30 @@ scambio_posizione_film:
     beq scambio_posizione_error_less
  
     read_int fmt_scambio_primo_film         // Legge da Input il numero inserito e stampa la format string del primo scambio
-    sub x19, x0, #1                         // Sottrae #1 dal registro w0 per leggere l'indice reale e salvarne il risultato nel registro w19
+    mov x19, x0                // Sottrae #1 dal registro w0 per leggere l'indice reale e salvarne il risultato nel registro w19
 	read_int fmt_scambio_secondo_film       // Leggie da Input il numero inserito e stampa la format string del secondo scambio
-	sub x20, x0, #1                         // Sottrae 1 dal registro w0 per leggere l'indice reale e salvarne il risultato nel registro w20
+	mov x20, x0                     // Sottrae 1 dal registro w0 per leggere l'indice reale e salvarne il risultato nel registro w20
     
+    
+    cmp x19, #1
+    blt fuori_range_posizioni
+
+    cmp x19, x21
+    bgt fuori_range_posizioni
+
+    cmp x20, #1
+    blt fuori_range_posizioni
+
+    cmp x20, x21
+    bgt fuori_range_posizioni
+
+    cmp x19, x20
+    beq numeri_uguali
+
+
+    sub x19, x19, #1   
+    sub x20, x20, #1    
+
     mov x0, x19
     mov x1, x20
     bl scambia_due_elementi_nella_struttura
@@ -741,13 +767,24 @@ scambio_posizione_film:
     b end_scambio_posizione
 
     scambio_posizione_error:
-        adr x0, fmt_fail_calcola_prezzo_medio
+        adr x0, fmt_nessun_film_presente
         bl printf
         b end_scambio_posizione
     
     scambio_posizione_error_less:
         adr x0, fmt_fail_less_film
         bl printf
+        b end_scambio_posizione
+
+    numeri_uguali:
+        adr x0, fmt_numeri_uguali
+        bl printf
+        b end_scambio_posizione
+    
+    fuori_range_posizioni:
+        adr x0, fmt_inserisci_un_valido
+        bl printf
+
 
     end_scambio_posizione:
 
@@ -854,9 +891,15 @@ scambio_prezzo:
             add x23, x23, #1                // incremento il contatore
             b scambio_prezzo_loop           // torno nel loop
 
+    scambio_prezzo_loop_endloop:
+    cmp x24, #0
+    bne no_nessuno_scambio
+    adr x0, fmt_nessuno_scambio
+    bl printf
+    b no_nessuno_scambio
 
     scambio_prezzo_error:
-        adr x0, fmt_fail_calcola_prezzo_medio
+        adr x0, fmt_nessun_film_presente
         bl printf
         b scambio_prezzo_loop_endloop
     
@@ -864,11 +907,7 @@ scambio_prezzo:
         adr x0, fmt_fail_less_film
         bl printf
 
-    scambio_prezzo_loop_endloop:
-    cmp x24, #0
-    bne no_nessuno_scambio
-    adr x0, fmt_nessuno_scambio
-    bl printf
+
     no_nessuno_scambio:
 
     ldp x23, x24, [sp], #16
@@ -885,77 +924,60 @@ elimina_duplicato:
     stp x29, x30, [sp, #-16]!
     stp x19, x20, [sp, #-16]!
     stp x21, x22, [sp, #-16]!
-    stp x23, x24, [sp, #-16]!
-    stp x25, x26, [sp, #-16]!
-
+    stp x23, x24, [sp, #-16]!   
     
     ldr x19, =film // in x19 carichiamo la lista dei film 
     ldrsw x20, n_film // in x20 carichiamo il numero dei film
     cmp x20,#2
-    blt elimina_duplicato_error_less    
+    blt elimina_duplicato_error_less
+
     add x19, x19, offset_film_anno
-    mov x21, #1 // contatore ciclo esterno
-    mov x22, #1 //contatore ciclo interno
-    mov x26, #0 
-    loop_uno:
+    mov x21, #1 // contatore ciclo esterno   
+    mov x22, #0 
+    loop_elimina_duplicato:
         cmp x21, x20
-        beq loop_uno_end
-        ldrsw x23, [x19] // valore anno elemento attuale, incremento pre index        
-        add x24, x19, film_size_aligned // indirizzo elemento successivo (anno) 
+        beq loop_elimina_duplicato_end
+        ldrsw x23, [x19], film_size_aligned // valore anno elemento attuale, incremento pre index        
+        ldrsw x24, [x19]
 
-        loop_start:
-            cmp x22, x20
-            beq loop_end
+        cmp x23, x24
+        beq uguali
+        add x21, x21, #1
+        b loop_elimina_duplicato
+
+        uguali:
+        mov x22, #1
+        sub x0, x19, offset_film_anno
+        sub x0, x0, film_size_aligned // indirizzo destinazione
+        add x1, x0, film_size_aligned // indirizzo sorgente
+
+        sub x24, x20, x21   //ldr
+        mov x4, film_size_aligned
+        mul x24, x24, x4 // size
+        mov x2, x24
+        bl memcpy
+
+        // sottraggo n film
+
+        adr x0, n_film
+        ldr w1, [x0]
+        sub w1, w1, #1
+        str w1, [x0]           
+
+        bl save_data
+
+        adr x0, fmt_eliminazione_effettuata    
+        add x21, x21, #1        
+        mov x1, x21
+        mov x2, x23
+        bl printf
         
-            ldrsw x25, [x24] // valore anno elemento successivo
-
-            cmp x23, x25 // controlla se sono uguali
-            bne non_uguali // se no, vai nel blocco "non_uguali"        
-
-            mov x26, #1
-            sub x0, x19, offset_film_anno // indirizzo destinazione
-            add x22, x0, film_size_aligned // indirizzo sorgente
-
-            sub x24, x20, x21   //
-            mov x1, film_size_aligned
-
-            mul x24, x24, x1 // size         
-            mov x1, x22
-            mov x2, x24
-            bl memcpy
+        b endif_elimina
 
 
-            // sottraggo n film
-
-            adr x0, n_film
-            ldr w1, [x0]
-            sub w1, w1, #1
-            str w1, [x0]           
-
-            bl save_data
-
-            adr x0, fmt_eliminazione_effettuata            
-            mov x1, x21
-            mov x2, x23
-            bl printf
-
-            b loop_uno_end
-
-
-            non_uguali:
-                add x22, x22, #1 // incrementa il contatore di 1
-                add x24, x24, film_size_aligned // passa all'elemento successivo
-                b loop_start // ripete il ciclo       
-
-        loop_end:    
-            mov x22, #0
-            add x21, x21, #1
-            add x19, x19, film_size_aligned
-            b loop_uno   
-
-
-    loop_uno_end:
-        cmp x26,#0
+     
+    loop_elimina_duplicato_end:
+        cmp x22,#0
         bne endif_elimina
         adr x0, fmt_nessuna_eliminazione
         bl printf
@@ -967,11 +989,12 @@ elimina_duplicato:
         
     endif_elimina:
 
-    ldp x25, x26, [sp], #16 
     ldp x23, x24, [sp], #16
     ldp x21, x22, [sp], #16
     ldp x19, x20, [sp], #16
     ldp x29, x30, [sp], #16
     ret
     .size elimina_duplicato, (. - elimina_duplicato)
+
+
 
