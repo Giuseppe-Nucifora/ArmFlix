@@ -915,7 +915,6 @@ scambio_prezzo:
     ret
     .size scambio_prezzo, (. - scambio_prezzo)
 
-
 .type elimina_duplicato, %function
 elimina_duplicato:
     stp x29, x30, [sp, #-16]!
@@ -923,64 +922,73 @@ elimina_duplicato:
     stp x21, x22, [sp, #-16]!
     stp x23, x24, [sp, #-16]!   
     
-    ldr x19, =film // in x19 carichiamo la lista dei film 
+    ldr x19, =film // in x19 carichiamo l'indirizzo della struttura in cui sono memorizzati i film 
     ldrsw x20, n_film // in x20 carichiamo il numero dei film
-    cmp x20,#2
-    blt elimina_duplicato_error_less
 
-    add x19, x19, offset_film_anno
-    mov x21, #1 // contatore ciclo esterno   
-    mov x22, #0 
+    cmp x20,#2 /* confrontiamo il numero dei film con il valore immediato 2 perché
+                l'operazione può essere effettuata solo se ci sono più di 2 film */
+    
+    blt elimina_duplicato_error_less /* in caso il numero dei film non supera il numero 2, mandare
+                                        un messaggio di errore e terminare l'operazione */
+    
+    add x19, x19, offset_film_anno // spostiamoci direttamente sul dato "anno" del primo film
+    mov x21, #1 // in x21 carichiamo il contatore per il ciclo
+    mov x22, #0 // in x22 carichiamo un valore che ci servirà per capire se abbiamo trovato un duplicato
+
     loop_elimina_duplicato:
-        cmp x21, x20
-        beq loop_elimina_duplicato_end
-        ldrsw x23, [x19], film_size_aligned // valore anno elemento attuale, incremento pre index        
-        ldrsw x24, [x19]
+        cmp x21, x20 // controlliamo se abbiamo finito i film da analizzare
+        beq loop_elimina_duplicato_end // se si, terminiamo il ciclo con nessun duplicato trovato
+        ldrsw x23, [x19], film_size_aligned // valore anno elemento attuale, incremento post-index     
+        ldrsw x24, [x19] // valore anno elemento successivo
 
-        cmp x23, x24
-        beq uguali
-        add x21, x21, #1
-        b loop_elimina_duplicato
+        cmp x23, x24 // confrontiamo se i due anni dei due film adiacenti sono uguali
+        beq uguali // se si, andiamo nel blocco "uguali"
+        add x21, x21, #1 // incremento del contatore per il ciclo
+
+        b loop_elimina_duplicato // ricomincio il ciclo
 
         uguali:
-        mov x22, #1
-        sub x0, x19, offset_film_anno        
-        add x1, x0, film_size_aligned // indirizzo sorgente
+            mov x22, #1 // in x22 indico con il valore immediato 1 che sono uguali
+            sub x0, x19, offset_film_anno // in x0 salvo il primo film con l'anno uguale a quello successivo
+            add x1, x0, film_size_aligned // in x1 vado avanti di un film che è il duplicato da eliminare
 
-        sub x24, x20, x21   //ldr
-        mov x4, film_size_aligned
-        mul x24, x24, x4 // size
-        mov x2, x24
-        bl memcpy
+            sub x24, x20, x21 /* in x24 salvo la differenza tra n_film e il
+                                    contatore per ottenere i film rimanenti */
+                
+            mov x4, film_size_aligned // memorizzo momentaneamente in x4 la lunghezza di un elemento intero
 
-        // sottraggo n film
+            mul x24, x24, x4 /* moltiplico i film rimanenti con la lunghezza di un
+                                    elemento intero per ottenere la memoria di questi */
+                
+            mov x2, x24 // metto il risultato in x2
+            bl memcpy // copio la memoria
 
-        adr x0, n_film
-        ldr w1, [x0]
-        sub w1, w1, #1
-        str w1, [x0]           
+            // decremento n_film di 1
+            adr x0, n_film
+            ldr w1, [x0]
+            sub w1, w1, #1
+            str w1, [x0]           
 
-        bl save_data
+            bl save_data // salvo con i film aggiornati
 
-        adr x0, fmt_eliminazione_effettuata    
-        add x21, x21, #1        
-        mov x1, x21
-        mov x2, x23
-        bl printf
-        
-        b endif_elimina
+            adr x0, fmt_eliminazione_effettuata // messaggio di operazione effettuata
+            add x21, x21, #1 // incremento del contatore per il ciclo     
+            mov x1, x21
+            mov x2, x23
+            bl printf
+            
+            b endif_elimina // finisce il ciclo
 
-
-     
     loop_elimina_duplicato_end:
-        cmp x22,#0
-        bne endif_elimina
-        adr x0, fmt_nessuna_eliminazione
+        cmp x22, #0 // controlla se effettivamente ha trovato un duplicato
+        bne endif_elimina // se si, termina l'operazione
+        adr x0, fmt_nessuna_eliminazione /* manda un messaggio che dice che
+                                            non è stato trovato nessun duplicato */
         bl printf
-        b endif_elimina
+        b endif_elimina // finisce il ciclo
 
     elimina_duplicato_error_less:
-        adr x0, fmt_fail_less_film
+        adr x0, fmt_fail_less_film // manda un messaggio di errore che dice che ci sono meno di 2 film
         bl printf
         
     endif_elimina:
@@ -991,6 +999,3 @@ elimina_duplicato:
     ldp x29, x30, [sp], #16
     ret
     .size elimina_duplicato, (. - elimina_duplicato)
-
-
-
