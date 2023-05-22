@@ -29,7 +29,7 @@ fmt_prezzo_medio: .asciz "\nPrezzo medio: %.2f\n\n"
 fmt_fail_save_data: .asciz "\nImpossibile salvere i dati.\n\n"
 fmt_fail_aggiungi_film: .asciz "\nMemoria insufficiente. Eliminare almeno un film, quindi riprovare.\n\n"
 fmt_nessun_film_presente: .asciz "\nNessun film presente.\n\n"
-fmt_fail_less_film: .asciz "\nMeno di due film presenti. Impossibile effetuare l'operazione.\n\n"
+fmt_fail_less_film: .asciz "\nMeno di due film presenti. Impossibile effettuare l'operazione.\n\n"
 fmt_continua: .asciz "\nPremi 1 per ritornare al MENÙ oppure premi qualsiasi altro numero per TERMINARE il programma.\n\n"
 fmt_scan_int: .asciz "%d"
 fmt_scan_str: .asciz "%127s"
@@ -44,8 +44,8 @@ fmt_prompt_prezzo: .asciz "Prezzo: "
 fmt_prompt_index: .asciz "Inserisci posizione film da eliminare (fuori range per annullare): "
 fmt_scambio_primo_film: .asciz "Inserire posizione primo film da scambiare: "
 fmt_scambio_secondo_film: .asciz "Inserire posizione secondo film da scambiare: "
-fmt_scambio_effettuato: .asciz "Elemento in posizione %d (Prezzo %d) scambiato con elemento in posizione %d (Prezzo %d).\n"
-fmt_eliminazione_effettuata: .asciz "Elemento in posizione %d (Anno %d) eliminato.\n"
+fmt_scambio_effettuato: .asciz "\nElemento in posizione %d (Prezzo %d) scambiato con elemento in posizione %d (Prezzo %d).\n"
+fmt_eliminazione_effettuata: .asciz "\nElemento in posizione %d (Anno %d) eliminato.\n"
 fmt_nessuna_eliminazione: .asciz "\nNessun duplicato trovato.\n"
 fmt_nessuno_scambio: .asciz "\nNessuno scambio effettuato. Gli elementi sono disposti in ordine crescente in base al prezzo.\n"
 fmt_errore_inserisci_numero: .asciz "\nInserisci un numero.\n\n"
@@ -141,107 +141,109 @@ film_temp: .skip max_film * film_size_aligned
 .global main
 main:
     stp x29, x30, [sp, #-16]!
-    stp x20, x21, [sp, #-16]!
+    str x20, [sp, #-16]!
 
-    bl load_data
+    bl load_data    //load_data carica i dati dal file binario alla memoria
 
     main_loop:
         adr x0, fmt_spaziatura
-        bl printf
-        stampa_film n_film, film, fmt_sezione_menu
-        bl print_menu
+        bl printf   //stampa dei caratteri new line per lasciare spazio per le stampe successive 
 
-        read_int fmt_prompt_menu
-        mov x20, x0
+        stampa_film n_film, film, fmt_sezione_menu  //stampa i film e i relativi attributi uno sotto l'altro
+        bl print_menu   //stampa le voci del menu
+
+        read_int fmt_prompt_menu    //stampa il prompt e legge il numero inserito in input
+        mov x20, x0        //x0 contiene il numero letto in input che corrisponde ad una voce del menù (vedi fmt_menu_options)
+                           //copia il contenuto di x0 nel registro non volatile x20 in modo da non perdere il valore
+        cmp x20, #0        //confronta se la voce del menù inserita è 0 = ESCI
+        beq end_main_loop  // se si esce dal main_loop e finisce l'esecuzione del programma
         
-        cmp x20, #0
-        beq end_main_loop
-        
-        cmp x20, #1
-        bne no_aggiungi_film
-        bl aggiungi_film
+        cmp x20, #1        //confronta se la voce del menù inserita è 1 = Aggiungi film
+        bne no_aggiungi_film //se no salta in no_aggiungi_film per fare ulteriori confronti
+        bl aggiungi_film    // se si invoca la funzione aggiungi_film 
         no_aggiungi_film:
 
-        cmp x20, #2
-        bne no_elimina_film
-        bl elimina_film
+        cmp x20, #2      //confronta se la voce del menù inserita è 2 = Elimina film
+        bne no_elimina_film //se no salta in no_elimina_film per fare ulteriori confronti
+        bl elimina_film     // se si invoca la funzione elimina_film
         no_elimina_film:
 
-        cmp x20, #3
-        bne no_filtro_genere
-        b blocco_filtra_genere
-        blocco_filtra_genere:
-            bl filtra_per_genere
-            stampa_messaggio_premi_uno_per_continuare
+        cmp x20, #3     //confronta se la voce del menù inserita è 3 = Filtra Genere (Iterativo)
+        bne no_filtro_genere    //se no salta in no_filtro_genere per fare ulteriori confronti
+        b blocco_filtra_genere  // se si salta nel blocco_filtra_genere
+        blocco_filtra_genere:   
+            bl filtra_per_genere    //invoca la funzione filtra_per_genere
+            stampa_messaggio_premi_uno_per_continuare   //stampa un messaggio (fmt_continua) se l'utente preme 1 va al menù altrimenti termina il programma
         no_filtro_genere:
 
-        cmp x20, #4
-        bne no_filtro_ricorsivo
-        b blocco_filtro_ricorsivo
+        cmp x20, #4     //confronta se la voce del menù inserita è 4 = Filtra Anno (Ricorsivo)
+        bne no_filtro_ricorsivo      //se no salta in no_filtro_ricorsivo per fare ulteriori confronti
+        b blocco_filtro_ricorsivo    // se si salta nel blocco_filtro_ricorsivo
         blocco_filtro_ricorsivo:
-            bl filtro_per_anno_ricorsivo
-            stampa_messaggio_premi_uno_per_continuare
+            bl filtro_per_anno_ricorsivo    //invoca la funzione filtro_per_anno_ricorsivo
+            stampa_messaggio_premi_uno_per_continuare   //stampa un messaggio (fmt_continua) se l'utente preme 1 va al menù altrimenti termina il programma
         no_filtro_ricorsivo:
 
-        cmp x20, #5
-        bne no_prezzo_medio_film
-        b blocco_prezzo_medio
+        cmp x20, #5     //confronta se la voce del menù inserita è 5 = Stampa prezzo medio
+        bne no_prezzo_medio_film    //se no salta in no_prezzo_medio_film per fare ulteriori confronti
+        b blocco_prezzo_medio   // se si salta nel blocco_prezzo_medio
         blocco_prezzo_medio:
-            bl calcola_prezzo_medio
-            stampa_messaggio_premi_uno_per_continuare
+            bl calcola_prezzo_medio     //invoca la funzione calcola_prezzo_medio
+            stampa_messaggio_premi_uno_per_continuare   //stampa un messaggio (fmt_continua) se l'utente preme 1 va al menù altrimenti termina il programma
         no_prezzo_medio_film: 
 
-        cmp x20, #6
-        bne no_scambio_posizione_film
-        bl scambio_posizione_film      
+        cmp x20, #6     //confronta se la voce del menù inserita è 6 = Scambia posizione elementi
+        bne no_scambio_posizione_film   //se no salta in no_scambio_posizione_film per fare ulteriori confronti
+        bl scambio_posizione_film       // se si invoca la funzione scambio_posizione_film
         no_scambio_posizione_film:
 
-        cmp x20, #7
-        bne no_scambio_prezzo
-        bl scambio_prezzo      
+        cmp x20, #7     //confronta se la voce del menù inserita è 7 = Scambio della prima coppia di elementi adiacenti non ordinati rispetto al prezzo
+        bne no_scambio_prezzo   //se no salta in no_scambio_prezzo per fare ulteriori confronti
+        bl scambio_prezzo       // se si invoca la funzione scambio_prezzo
         no_scambio_prezzo:
 
-        cmp x20, #8
-        bne no_elimina_duplicato
-        bl elimina_duplicato      
+        cmp x20, #8     //confronta se la voce del menù inserita è 8 = Eliminazione del primo duplicato (inteso come elemento uguale al precedente) rispetto all'anno
+        bne no_elimina_duplicato     //se no salta in no_elimina_duplicato per fare ulteriori confronti
+        bl elimina_duplicato         // se si invoca la funzione elimina_duplicato
         no_elimina_duplicato:
         
-        b main_loop
+        b main_loop     //salta in main_loop per ciclare
     end_main_loop:
 
     mov w0, #0
-    ldp x20, x21, [sp], #16
+    ldr x20, [sp], #16
     ldp x29, x30, [sp], #16
     ret
     .size main, (. - main)
 
 .type scan_int, %function
 scan_int:                       
-//LEGGE IN INPUT E STAMPA UN MESSAGGIO DI ERRORE SE IL VALORE NON È UN NUMERO 
-//E LEGGE DI NUOVO FINCHE NON SI INSERISCE UN NUMERO
+//Passato in x0 l'indirizzo del prompt da visualizare, legge in input e stampa un messaggio di errore se l'input inserito non è un numero e chiede di inserire un nuovo input finche non viene inserito un numero
+//Quando viene inserito un numero lo copia in x0
     stp x29, x30, [sp, #-16]!
     str x19, [sp, #-16]!
-    //x0 prompt
-    mov x19, x0
+
+    //x0 indirizzo prompt
+    mov x19, x0 //copia il contenuto di x0 in x19 (non volatile) per conservare il valore dopo eventuali chiamate a funzioni
     loop_int: 
-    mov x0, x19    
+    mov x0, x19  //ogni volta che viene eseguito viene stampato il prompt 
     bl printf
 
-    adr x0, fmt_scan_int
-    adr x1, tmp_int
-    bl scanf    
-
-    cmp x0, #0 
-    bne ok
-    adr x0, fmt_errore_inserisci_numero
-    bl printf
-    adr x0, fmt_pulisci_buffer
+    adr x0, fmt_scan_int    //fmt_scan_int format string tipizzata ad un numero 
+    adr x1, tmp_int         // variabile temporanea dove verrà salvato l'input 
+    bl scanf                // funzione scanf che legge l'input
+                            // scanf restituisce 0 se c'è stato un errore durante la lettura, altrimenti, restituisce un valore intero che rappresenta il numero di elementi correttamente letti e assegnati alle variabili di destinazione. 
+    cmp x0, #0      // confronta il valore restituito da scanf con zero
+    bne ok          // se non sono uguali è stato inserito un numero, quindi l'inserimento è andato a buon fine. Salta nel blocco ok
+    adr x0, fmt_errore_inserisci_numero     // se sono uguali c'è stato un errore
+    bl printf       //stampa un messaggio di errore
+    adr x0, fmt_pulisci_buffer      //fa una lettura a vuoto per eliminare elementi residui nel buffer
     adr x1, tmp_int
     bl scanf
-    b loop_int
+    b loop_int      //ciclia
 
     ok:
-    ldr x0, tmp_int
+    ldr x0, tmp_int    //restituisce il l'input letto 
     
     ldr x19, [sp], #16
     ldp x29, x30, [sp], #16
@@ -330,7 +332,7 @@ save_data:
 
 
 .type print_menu, %function
-print_menu:
+print_menu:     //stampa le voci del menù (fmt_menu_options) ed eventuali stringhe di abbellimento (fmt_menu_line)
     stp x29, x30, [sp, #-16]!
         
     adr x0, fmt_menu_line
@@ -348,29 +350,24 @@ stampa_tutti_i_film:
     stp x29, x30, [sp, #-16]!
     stp x19, x20, [sp, #-16]!
     stp x21, X22, [sp, #-16]!
-
-    //x0 numero film da stampare
-    //x1 indirizzo struttura dati in cui sono memorizzati i film
-    //x2 indirizzo sezione da visualizzare prima dei film
   
-    mov x20, x0
-    mov x21, x1
-    mov x22, x2
+    mov x20, x0     //x0 numero film da stampare
+    mov x21, x1     //x1 indirizzo struttura dati in cui sono memorizzati i film
+    mov x22, x2      //x2 indirizzo sezione da visualizzare prima dei film
     
-    //stampa titolo
     adr x0, fmt_menu_title
-    bl printf
+    bl printf       //stampa nome del programma
     mov x0, x22
-    bl printf
+    bl printf       //stampa la sezione attuale vedi (fmt_sezione)
     adr x0, fmt_menu_line
-    bl printf
+    bl printf       
     adr x0, fmt_menu_header
     bl printf
     adr x0, fmt_menu_line
     bl printf
     
     mov x19, #0
-    print_entries_loop:
+    print_entries_loop:     //stampa i singoli film 
         cmp x19, x20
         bge end_print_entries_loop
 
@@ -533,44 +530,44 @@ filtra_per_genere:
     stp x20, x21, [sp, #-16]!
     stp x22, x23, [sp, #-16]!
   
-    ldr w22, n_film  //w22 = numero film 
-    cmp w22, #0
-    beq filtro_genere_error
+    ldr w22, n_film  //Carico il numero dei film
+    cmp w22, #0      //Confronto il numero dei film con 0
+    beq filtro_genere_error     //se sono uguali, quindi sono ci sono film inseriti salta nel blocco filtro_genere_error
 
-    read_str fmt_prompt_genere
-    adr x20, tmp_str //Indirizzo Input genere
-    ldr x21, =film // indirizzo struttura che contiene i film     
+    read_str fmt_prompt_genere      //Leggi il genere da ricercare
+    adr x20, tmp_str                //Carica l'indirizzo della variabile temporanea su cui è memorizzato il genere
+    ldr x21, =film                  //Carica indirizzo struttura dati che contiene tutti i film     
 
-    mov x23, #0 //w23 = contatore 
-    add x21, x21, offset_film_genere// indirizzo in cui c'e il genere nella struttura dati    
-    filtra_per_genere_loop:     
-        cmp w23,w22
-        beq filtra_per_genere_loop_endloop 
+    mov x23, #0     //copia in w23 zero. w0 registro contatore
+    add x21, x21, offset_film_genere    //Somma all'indirizzo di tutti i film, l'offset in modo da ottenere l'indirizzo preciso in cui ci saranno i valori corrispondenti al genere  
+    filtra_per_genere_loop:             //loop che scandisce i generi dei film e li confronta con il genere inserito
+        cmp w23,w22         //confronta contatore con il numero dei film 
+        beq filtra_per_genere_loop_endloop  //se sono uguali significa che ho finito di scandire la struttura e quindi salto filtra_per_genere_loop_endloop 
         
-        ldr x0, =tmp_str //ind
-        mov x1,x21  //ind
-        bl confronta_due_stringhe //restituisce 1 se sono uguali 
-
-        cmp x0,#0
-        beq endif
-        mov x0, x23
-        bl copia_film_in_posizione_in_var_temp 
+        mov x0, x20  //passo come primo parametro il genere inserito in input
+        mov x1,x21   //passo come secondo parametro il genere ottenuto scandendo la struttura
+        bl confronta_due_stringhe       //invoco la funzione confronta_due_stringhe che restituisce 1 se le stringhe passate come parametri sono uguali, restituisce 0 se diverse
+                                        //confronta_due_stringhe fa differenza tra maiuscole e minuscole
+        cmp x0,#0           //Confronta il valore restituito dalla funzione confronta_due_stringhe con 0
+        beq endif           //Se uguale a zero, le stringhe sono diverse, salta nel endif per ciclare di nuovo
+        mov x0, x23         //Se uguale a uno, copia in x0 il contatore che rappresenta la posizione del film su cui si è fatto il confronto del genere per passarlo come parametro alla funzione che segue
+        bl copia_film_in_posizione_in_var_temp      // invoca la funzione copia_film_in_posizione_in_var_temp che data una posizione copia il film che corrisponde in quella posizione e tutti i suoi attributi nella variabile temporanea (film_temp)
         endif:     
 
-        add x21, x21, film_size_aligned //incremento l'indirizzo per scandire l'elemento successivo
-        add x23,x23,#1
-        b filtra_per_genere_loop
+        add x21, x21, film_size_aligned //incremento di size l'indirizzo del genere del film attuale per ottenere l'indirizzo del genere del film successivo
+        add x23,x23,#1  //incremento il contatore, la posizione del film 
+        b filtra_per_genere_loop        //salta in filtra_per_genere_loop per ciclare
 
-    filtra_per_genere_loop_endloop:
+    filtra_per_genere_loop_endloop:        //blocco fine ciclo
+                                           //ora nella varibile temporanea ci sono i film filtrati
+    stampa_film n_film_temp, film_temp, fmt_sezione_filtro_genere      //stampa i film che sono presenti nella variabile temporanea, quindi i film che corrispondono al genere inserito in input
 
-    stampa_film n_film_temp, film_temp, fmt_sezione_filtro_genere
-
-    svuota_variabile_temporanea
-    b end_filtro_genere
+    svuota_variabile_temporanea            //Una volta visualizzati i film, imposta il numero dei film della variabile temporanea a zero, in modo da poterla utilizzare per utilizzi futuri (viene utilizzata da altre funzioni)
+    b end_filtro_genere     //salta nel blocco end_filtro_genere per terminare la funzione
 
     filtro_genere_error:
         adr x0, fmt_nessun_film_presente
-        bl printf
+        bl printf       //stampa messaggio di errore quando non ci sono film presenti 
 
     end_filtro_genere:
 
@@ -727,63 +724,63 @@ scambio_posizione_film:
     stp x19, x20, [sp, #-16]!
     str x21, [sp, #-16]!
 
-    ldrsw x21, n_film
-    cmp x21, #0
-    beq scambio_posizione_error
+    ldrsw x21, n_film    // Carica il numero di film Signed Word 
+    cmp x21, #0          // Confronta numero dei film
+    beq scambio_posizione_error //se è uguale a zero (non ci sono film), salta nel blocco scambio_posizione_error
 
-    cmp x21, #1
-    beq scambio_posizione_error_less
- 
-    read_int fmt_scambio_primo_film         // Legge da Input il numero inserito e stampa la format string del primo scambio
-    mov x19, x0                // Sottrae #1 dal registro w0 per leggere l'indice reale e salvarne il risultato nel registro w19
-	read_int fmt_scambio_secondo_film       // Leggie da Input il numero inserito e stampa la format string del secondo scambio
-	mov x20, x0                     // Sottrae 1 dal registro w0 per leggere l'indice reale e salvarne il risultato nel registro w20
-    
-    
-    cmp x19, #1
-    blt fuori_range_posizioni
+    cmp x21, #1         // Confronta numero dei film con 1 
+    beq scambio_posizione_error_less //Se uguale a uno, salta nel blocco scambio_posizione_error_less
+                                     //Devono essere stati inseriti almeno due film per poter fare lo scambio
 
-    cmp x19, x21
-    bgt fuori_range_posizioni
+    read_int fmt_scambio_primo_film         //Stampa il prompt e legge la posizione del primo film da scambiare
+    mov x19, x0                             //Copia la posizione del primo film in un registro non volatile x19
+	read_int fmt_scambio_secondo_film       //Stampa il prompt e legge la posizione del secondo film da scambiare
+	mov x20, x0                             //Copia la posizione del secondo film in un registro non volatile x20    
+                                //Le posizioni inserite devono essere comprese tra 1 e il numero dei film inseriti
+    cmp x19, #1                 //Confronta la posizione del primo film con 1
+    blt fuori_range_posizioni   //se è minore salta nel blocco fuori_range_posizioni
 
-    cmp x20, #1
-    blt fuori_range_posizioni
+    cmp x19, x21                 //Confronta la posizione del primo film con il numero dei film inseriti
+    bgt fuori_range_posizioni    //se è maggiore salta nel blocco fuori_range_posizioni
 
-    cmp x20, x21
-    bgt fuori_range_posizioni
+    cmp x20, #1                 //Confronta la posizione del secondo film con il numero con 1 
+    blt fuori_range_posizioni   //se è minore salta nel blocco fuori_range_posizioni
 
-    cmp x19, x20
-    beq numeri_uguali
+    cmp x20, x21                //Confronta la posizione del secondo film con il numero dei film inseriti
+    bgt fuori_range_posizioni   //se è maggiore salta nel blocco fuori_range_posizioni
+
+    cmp x19, x20                //Confronta entrambe le posizioni inserite
+    beq numeri_uguali           //se sono uguali salta nel blocco numeri_uguali 
 
 
-    sub x19, x19, #1   
-    sub x20, x20, #1    
+    sub x19, x19, #1   //sottrai uno alla posizione del primo film da scambiare 
+    sub x20, x20, #1   //sottrai uno alla posizione del secondo film da scambiare 
+                       //si sottrae uno, perchè la funzione scambia_due_elementi_nella_struttura considera per comodità le posizioni dei film partendo da zero 
+    mov x0, x19        //passo come primo parametro della funzione scambia_due_elementi_nella_struttura la posizione del primo film da scambiare
+    mov x1, x20        //passo come secondo parametro della funzione scambia_due_elementi_nella_struttura la posizione del secondo film da scambiare
+    bl scambia_due_elementi_nella_struttura     //invoco la funzione scambia_due_elementi_nella_struttura
+                        //gli elementi sono stati scambiati! Ora gli elementi sono in memoria
+    bl save_data        //invoco la funzione save_data che salva i dati in memoria nel file binario (armflix.dat)
+    b end_scambio_posizione     //salta nel end_scambio_posizione che termina la funzione 
 
-    mov x0, x19
-    mov x1, x20
-    bl scambia_due_elementi_nella_struttura
-
-    bl save_data
-    b end_scambio_posizione
-
-    scambio_posizione_error:
+    scambio_posizione_error:    
         adr x0, fmt_nessun_film_presente
-        bl printf
-        b end_scambio_posizione
+        bl printf               //stampa messaggio di errore "Nessun film presente"
+        b end_scambio_posizione     //salta nel end_scambio_posizione che termina la funzione 
     
     scambio_posizione_error_less:
         adr x0, fmt_fail_less_film
-        bl printf
-        b end_scambio_posizione
+        bl printf           //stampa messaggio di errore "Meno di due film film presenti"
+        b end_scambio_posizione     //salta nel end_scambio_posizione che termina la funzione 
 
     numeri_uguali:
         adr x0, fmt_numeri_uguali
-        bl printf
-        b end_scambio_posizione
+        bl printf          //stampa messaggio di errore "Le due posizioni inserite sono uguali"
+        b end_scambio_posizione     //salta nel end_scambio_posizione che termina la funzione 
     
     fuori_range_posizioni:
         adr x0, fmt_inserisci_un_valido
-        bl printf
+        bl printf          //stampa messaggio di errore" Inserisci un numero compreso nel range delle posizioni."
 
 
     end_scambio_posizione:
