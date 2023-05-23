@@ -490,34 +490,34 @@ elimina_film:
 calcola_prezzo_medio:
     stp x29, x30, [sp, #-16]!
     
-    ldr x0, n_film
-    cmp x0, #0
-    beq calcola_prezzo_medio_error
+    ldr x0, n_film      //Carico nel registro x0 il numero di film presenti nel file armflix.dat
+    cmp x0, #0          //Confronto il numero di film con 0
+    beq calcola_prezzo_medio_error       //Se il numero di film è pari a 0 faccio un branch in "calcola_prezzo_medio_error" dove stampo un messaggio di errore
 
-        fmov d1, xzr
-        mov x2, #0
-        ldr x3, =film
-        add x3, x3, offset_film_prezzo
+        fmov d1, xzr            //Copia in d1 il valore 0
+        mov x2, #0              //Contatore
+        ldr x3, =film           //Carica in x3 l'indirizzo dell'etichetta film
+        add x3, x3, offset_film_prezzo      //Aggiunge il numero di byte necessari per prelevare i prezzi 
         calcola_prezzo_medio_loop:
-            ldr x4, [x3]
-            ucvtf d4, x4
-            fadd d1, d1, d4
-            add x3, x3, film_size_aligned
+            ldr x4, [x3]        //Carico il valore di x3 in x4
+            ucvtf d4, x4        //Converte il valore intero in floating point e lo carica in x4
+            fadd d1, d1, d4     //Sommo i prezzi letti e li carico in d1
+            add x3, x3, film_size_aligned   //Aggiunge il numero di byte necessari per prelevare il prezzo successivo
 
-            add x2, x2, #1
-            cmp x2, x0
-            blt calcola_prezzo_medio_loop
+            add x2, x2, #1      //Incremento il contatore 
+            cmp x2, x0           //Confronto il contatore con il numero di film
+            blt calcola_prezzo_medio_loop        //Se il n° di prezzi letti è minore del n° di film, salta nel blocco "calcola_prezzo_medio_loop" per ciclare le istruzioni
         
-        ucvtf d0, x0
-        fdiv d0, d1, d0
+        ucvtf d0, x0        
+        fdiv d0, d1, d0      //Divido la somma dei prezzi e la divido per il numero di film
         adr x0, fmt_prezzo_medio
-        bl printf
+        bl printf           //Stampo il prezzo medio
 
         b end_calcola_prezzo_medio
 
     calcola_prezzo_medio_error:
         adr x0, fmt_nessun_film_presente
-        bl printf
+        bl printf          //stampo un messaggio di errore se non ci sono film inseriti
     
     end_calcola_prezzo_medio:
         ldp x29, x30, [sp], #16
@@ -832,19 +832,19 @@ scambio_prezzo:
     stp x23, x24, [sp, #-16]!
     
     ldr x20, =film      // indirizzo struttura che contiene i film 
-    ldr x22, n_film     // w22 = numero film  
+    ldr x22, n_film     // numero film   
 
-    cmp x22, #0
-    beq scambio_prezzo_error
+    cmp x22, #0         // controllo se ci sono film presenti
+    beq scambio_prezzo_error        // altrimenti salto
 
-    cmp x22, #1
-    beq scambio_prezzo_error_less
+    cmp x22, #1         // controllo se c'è almeno una coppia di film 
+    beq scambio_prezzo_error_less       // altrimenti salto
 
 
-    sub x22, x22, #1         // iterare da 0 a (n_film)-1 (per evitare overflow)
-    mov x23, #0         // contatore 
+    sub x22, x22, #1    // iterare da 0 a (n_film)-1 (per evitare overflow)
+    mov x23, #0         // contatore i 
     mov x0,#0
-    mov x24, #0
+    mov x24, #0         // flag per indicare se è stato effettuato lo scambio
     
     scambio_prezzo_loop:     
         cmp x23,x22
@@ -859,27 +859,25 @@ scambio_prezzo:
         ldrsw x19, [x8] // prezzo1 
         ldrsw x21, [x9] // prezzo2
 
-        // confronto tra prezzo1 e prezzo2
-        cmp x19, x21    
-        ble end_if       
+        
+        cmp x19, x21    // confronto tra prezzo1 e prezzo2  
+        ble end_if      // altrimenti continuo ad iterare
 
-        // scambia prezzo, invocare funzione di matteo
-        // Store the least-signiﬁcant byte from register x12 into Mem[x2]. strb x12, [x2]
-
+        // metto i film nei registri x1 e x2 per poter passarli come parametri alla funzione 
         mov x0, x23
-        add x1, x23, #1       
-
+        add x1, x23, #1  // siccome è un elemento adiacente ovviamente la posizione sarà la successiva     
         bl scambia_due_elementi_nella_struttura
-        mov x24, #1
+
+        mov x24, #1      // c'è stato uno scambio e il flag è settato a 1
         bl save_data  
 
         adr x0, fmt_scambio_effettuato
-        mov x1, x23
-        add x1, x1, #1        
-        mov x2, x19
-        add x3, x1, #1
-        mov x4, x21
-        bl printf
+        mov x1, x23           // Argomenti per la stampa; Posizione x
+        add x1, x1, #1        // aggiungo 1 perchè parte da 1-based       
+        mov x2, x19           // Prezzo della posizione x
+        add x3, x1, #1        // posizione y
+        mov x4, x21           // prezzo posizione y
+        bl printf             // stampa scambio effettuato 
 
         b scambio_prezzo_loop_endloop
        
@@ -889,19 +887,19 @@ scambio_prezzo:
             b scambio_prezzo_loop           // torno nel loop
 
     scambio_prezzo_loop_endloop:
-    cmp x24, #0
-    bne no_nessuno_scambio
+    cmp x24, #0     // controllo se è stato effettuato uno scambio
+    bne no_nessuno_scambio      // se il flag non è settato ad uno 
     adr x0, fmt_nessuno_scambio
-    bl printf
+    bl printf       // Stampa nessuno scambio
     b no_nessuno_scambio
 
     scambio_prezzo_error:
         adr x0, fmt_nessun_film_presente
-        bl printf
+        bl printf       // stampa per nessun film presente
         b scambio_prezzo_loop_endloop
     
     scambio_prezzo_error_less:
-        adr x0, fmt_fail_less_film
+        adr x0, fmt_fail_less_film   // Stampa per numero insufficente di coppie 
         bl printf
 
 
