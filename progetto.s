@@ -1,15 +1,20 @@
 .section .rodata
-filename: .asciz "armflix.dat"
-read_mode: .asciz "r"
-write_mode: .asciz "w"
+filename: .asciz "armflix.dat" // NOME FILE
+read_mode: .asciz "r"  // VARIABILE DI LETTURA PER I FILE
+write_mode: .asciz "w"  // VARIABILE DI SCRITTURA PER I FILE
 fmt_menu_title:
         .asciz "---------------------------------------------------------------------------------\n               _   ___ __  __   ___ _    _____  __\n              /_\\ | _ \\  \\/  | | __| |  |_ _\\ \\/ /\n             / _ \\|   / |\\/| | | _|| |__ | | >  < \n            /_/ \\_\\_|_\\_|  |_| |_| |____|___/_/\\_\\\n                                                  \n"
 fmt_menu_line:
     .asciz "---------------------------------------------------------------------------------\n"
+
 fmt_menu_header:
     .asciz "  # TITOLO                         GENERE             ANNO               PREZZO\n"
+
+//FORMAT STRING CON I DATI CHE DEVE INSERIRE L'UTENTE E LE TIPOLOGIE DI DATI (d= decimale, s= stringa)
 fmt_menu_entry:
     .asciz "%3d %-30s %-18s %-10d %10d\n"
+
+//FORMAT STRING PER LE SCELTE DELLE FUNZIONI
 fmt_menu_options:
     .ascii "1: Aggiungi Film\n"
     .ascii "2: Elimina Film\n"
@@ -31,12 +36,14 @@ fmt_fail_aggiungi_film: .asciz "\nMemoria insufficiente. Eliminare almeno un fil
 fmt_nessun_film_presente: .asciz "\nNessun film presente.\n\n"
 fmt_fail_less_film: .asciz "\nMeno di due film presenti. Impossibile effettuare l'operazione.\n\n"
 fmt_continua: .asciz "\nPremi 1 per ritornare al MENÙ oppure premi qualsiasi altro numero per TERMINARE il programma.\n\n"
+///FORMAT STRING PER LA LETTURE
 fmt_scan_int: .asciz "%d"
 fmt_scan_str: .asciz "%127s"
 fmt_scan_titolo: .asciz "%[^\n]"
 fmt_pulisci_buffer: .asciz "%c"
 fmt_prompt_menu: .asciz "> "
 fmt_spaziatura: .asciz "\n\n\n"
+
 fmt_prompt_titolo: .asciz "Titolo: "
 fmt_prompt_genere: .asciz "Genere: "
 fmt_prompt_anno: .asciz "Anno: "
@@ -51,37 +58,44 @@ fmt_nessuno_scambio: .asciz "\nNessuno scambio effettuato. Gli elementi sono dis
 fmt_errore_inserisci_numero: .asciz "\nInserisci un numero.\n\n"
 fmt_inserisci_un_valido: .asciz "\nInserisci un numero compreso nel range delle posizioni.\n"
 fmt_numeri_uguali: .asciz "\nLe due posizioni inserite sono uguali!\n"
-.align 2
+.align 2       // ALLINEAMENTO DELLA MEMORIA
 
 .data
 n_film: .word 0
 n_film_temp: .word 0
 
-.equ max_film, 5
+.equ max_film, 5    //MASSIMO DI FILM CHE SI POSSONO INSERIRE
 
+//DICHIARAZIONE DELLA DIMENZIONE DELLE SINGOLE VARIABILI
 .equ size_film_titolo, 30
 .equ size_film_genere, 18
 .equ size_film_anno, 4
 .equ size_film_prezzo, 4
 
+//DICHIARAZIONE DEGLI OFFSET. GLI OFFSET INDICANO QUANTI BYTE DOBBIAMO AGGIUNGERE AD UN INDIRIZZO PER POTERNE OTTERENERE UNO SPECIFICO
 .equ offset_film_titolo, 0
 .equ offset_film_genere, offset_film_titolo + size_film_titolo //30
 .equ offset_film_anno, offset_film_genere + size_film_genere //48
 .equ offset_film_prezzo, offset_film_anno + size_film_anno //52
 .equ film_size_aligned, 64
 
-.bss
+.bss //NELLA SEZIONE BSS VENGONO SALVATE SOLO LE DIMENSIONI DI VARIABILI O ARRAY
+//64 BIT PER ACQUISIRE LE STRINGHE E 8 BIT PER ACQUISIRE GLI INTERI
 tmp_str: .skip 64
 tmp_int: .skip 8
+
+//CONTIENE L'INSIEME DELLE TUPLE, OVVERO TUTTI I GIOCHI CHE ANDIAMO A SALVARE. LA SUA DIMENSIONE E' DATA DALLA DIMENSIONE DI UNA TUPLA MOLTIPLICATA PER IL NUMERO
+//MASSIMO DI GIOCHI
 film: .skip film_size_aligned * max_film
+
 film_temp: .skip max_film * film_size_aligned
 
-
+// MACRO PER LA LETTURA DI UN INTERO DA INPUT
 .macro read_int prompt
    adr x0, \prompt
    bl scan_int
 .endm
-
+// MACRO PER LA LETTURA DI UNA STRINGA DA INPUT
 .macro read_str prompt
     adr x0, \prompt
     bl printf
@@ -400,14 +414,14 @@ aggiungi_film:
     stp x19, x20, [sp, #-16]!
     
     ldr x19, n_film
-    ldr x20, =film
-    mov x0, film_size_aligned
+    ldr x20, =film //INSIEME DELLE TUPLE
+    mov x0, film_size_aligned // DIMENZIONE DI UNA TUPLA
     mul x0, x19, x0
     add x20, x20, x0
     
-    cmp x19, max_film
-    bge fail_aggiungi_film
-
+    cmp x19, max_film //COMPARA L'INDICE CORRENTE DEL FILM CON IL MAX DI FILM CHE SI POSSONO AGGIUNGERE 
+    bge fail_aggiungi_film //SALT0 ALLA STAMPA DELLA MEMORIA INSUFFICENTE
+        //LETTURA E SALVATAGGIO DEL FILM 
         read_titolo
         save_to x20, offset_film_titolo, size_film_titolo
 
@@ -420,7 +434,7 @@ aggiungi_film:
         read_int fmt_prompt_prezzo
         str w0, [x20, offset_film_prezzo]      
 
-        add x19, x19, #1 //Incrementa n film
+        add x19, x19, #1 //INCREMENTO DEL CONTATORE DI 1
         ldr x20, =n_film
         str x19, [x20]
 
@@ -442,29 +456,31 @@ aggiungi_film:
 elimina_film:
     stp x29, x30, [sp, #-16]!    
    
-    ldr x1, n_film
-    cmp x1, #0
-    beq end_elimina_film_error
+    ldr x1, n_film //CARICA LA PRIMA TUPLA
+    cmp x1, #0 //COMPARA L'INDICE DELLA PRIMA TUPLA CON 0
+    beq end_elimina_film_error // SE NON CI SONO ELEMNTI SALTA ALLA FINE DELLA FUNZIONE
 
     read_int fmt_prompt_index
-
+    
+    //CONTROLLA SE L'INPUT SIA PIU' PICCOLO DI 1, TERMINA PERCHE' FUORI DAL RANGE
     cmp x0, 1
     blt end_elimina_film
 
+    //CONTROLLA SE L'INPUT SIA PIU' GRANDE DEL MASSIMO DEI FILM, TERMINA PERCHE' FUORI DAL RANGE
     ldr x1, n_film
     cmp x0, x1
     bgt end_elimina_film
 
-    sub x5, x0, 1   // selected index
+    sub x5, x0, 1   //SELEZIONA L'INDICE, VIENE GESTITO CON LO 0 BASED
     ldr x6, n_film
-    sub x6, x6, x0  // number of auto after selected index
+    sub x6, x6, x0  //ELEMNTO SUCCESSIVO A QUELLO DELL'INPUT
     mov x7, film_size_aligned
     ldr x0, =film
-    mul x1, x5, x7  // offset to dest  
+    mul x1, x5, x7  //MOLTIPLICA L'INDICE CORRENTE CON LA DIMENZIONE DELLA TUPLA PER CALCOLANRNE LA DISTANZA  
 
-    add x0, x0, x1  // dest
-    add x1, x0, x7  // source
-    mul x2, x6, x7  // bytes to copy
+    add x0, x0, x1  //DESTINAZIONE 
+    add x1, x0, x7  //SORGENTE
+    mul x2, x6, x7  //BYTE DA COPIARE
     bl memcpy
 
     ldr x0, =n_film
