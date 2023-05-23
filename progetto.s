@@ -264,7 +264,7 @@ scan_int:
     ret
     .size scan_int, (. - scan_int)
 
-
+//Gestione I/O da file.
 .type load_data, %function
 load_data:
     stp x29, x30, [sp, #-16]!
@@ -272,14 +272,14 @@ load_data:
     
     adr x0, filename
     adr x1, read_mode
-    bl fopen
+    bl fopen            //Chiamo la funzione fopen per aprire il file.
 
-    cmp x0, #0
-    beq end_load_data
+    cmp x0, #0          //Se la chiamata ad fopen restituisce 0, vuol dire che c'è un errore.
+    beq end_load_data     //Interrompo quindi l'esecuzione dell'istruzione
 
     mov x19, x0
 
-    ldr x0, =n_film
+    ldr x0, =n_film     
     mov x1, #4
     mov x2, #1
     mov x3, x19
@@ -289,10 +289,10 @@ load_data:
     mov x1, film_size_aligned
     mov x2, max_film
     mov x3, x19
-    bl fread
+    bl fread            //Altrimenti, leggi i dati presenti nel file.
 
     mov x0, x19
-    bl fclose
+    bl fclose           //Chiude il file
 
     end_load_data:
 
@@ -304,6 +304,8 @@ load_data:
 
 .type save_data, %function
 save_data:
+//Salvo su file i film.
+//Il funzionamento è simile alla funzione precedente, con la differenza che invece di chiamare fread per leggere i valori, chiamo fwrite, per scriverli su file.
     stp x29, x30, [sp, #-16]!
     str x19, [sp, #-16]!
     
