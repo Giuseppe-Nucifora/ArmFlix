@@ -105,7 +105,7 @@ film_temp: .skip max_film * film_size_aligned
     bl scanf
 .endm
 
-.macro save_to item, offset, size
+.macro save_to item, offset, size   //copia una stringa
     add x0, \item, \offset
     ldr x1, =tmp_str
     mov x2, \size
@@ -115,7 +115,7 @@ film_temp: .skip max_film * film_size_aligned
     strb wzr, [x0]
 .endm
 
-.macro read_titolo 
+.macro read_titolo  //legge il titolo del film che viene messo in input
     adr x0, fmt_prompt_titolo
     bl printf
 
@@ -543,7 +543,7 @@ calcola_prezzo_medio:
         .size calcola_prezzo_medio, (. - calcola_prezzo_medio)
 
 .type filtra_per_genere, %function
-filtra_per_genere:
+filtra_per_genere:              //La seguente funzione dato un genere da cercare stampa tutti i film di quel genere 
     stp x29, x30, [sp, #-16]!
     stp x20, x21, [sp, #-16]!
     stp x22, x23, [sp, #-16]!
@@ -596,32 +596,34 @@ filtra_per_genere:
     .size filtra_per_genere, (. - filtra_per_genere)
 
 .type confronta_due_stringhe, %function
-confronta_due_stringhe:
+confronta_due_stringhe:         //La seguente funzione date due stringhe verifica se sono uguali. FA DISTINZIONE TRA MAIUSCOLE E MINUSCOLE 
     stp x29, x30, [sp, #-16]!
     stp x20, x21, [sp, #-16]!
     str x22, [sp, #-16]!
 
-    mov x5, #1 //uno
-
+    //x0 primo parametro della funzione INDIRIZZO della stringa da confrontare
+    //x0 secondo parametro della funzione INDIRIZZO dell'altra stringa da confrontare
+    mov x5, #1 //uno rappresenta TRUE 
+                        //questo ciclo verifica che le due stringhe sono uguali a scandendo e confrontando ogni singolo carattere delle due stringhe 
     loop:
-        ldrb w20, [x0]
-        ldrb w21, [x1]
-        cmp w20, #0 //controllo se e non e nessuno carattere
-        beq endloop
-        cmp w21, #0
-        beq endloop
-        
-        cmp w20, w21
-        bne diversi    
+        ldrb w20, [x0]      //carico il SINGOLO CARATTERE della stringa da confrontare
+        ldrb w21, [x1]      //carico il SINGOLO CARATTERE dell'altra stringa da confrontare
+        cmp w20, #0         //controllo se il carattere della stringa1 è zero 
+        beq endloop         //se si termino il ciclo  
+        cmp w21, #0         //se no controllo se il carattere della stringa2 è zero         
+        beq endloop         //se si termino il ciclo  
+                            
+        cmp w20, w21        //se no controllo se sono uguali 
+        bne diversi         //se non sono uguali salto bel blocco diversi 
 
-        add x0, x0, #1
-        add x1, x1, #1
-        b loop
-    diversi:
-        mov x5,#0 //metti a zero
+        add x0, x0, #1      //incremento l'indirizzo contenuto in x0 e x1 di uno per scandire alla prossima iterazione il carattere successivo
+        add x1, x1, #1      
+        b loop              //cicla 
+    diversi:            //saltera in questo blocco se i caratteri confrontati sono diversi
+        mov x5,#0           //copia 0 in x5, ciò sarà il valore che verrà restituito
     endloop:
-
-    mov x0,x5
+            //la funzione restituirà 1 se le due stringhe sono uguali e 0 se sono diverse
+    mov x0,x5   //copia il contenuto di x5 in x0 (registro usato per restituire un valore)
     ldr x22,  [sp], #16
     ldp x20, x21, [sp], #16
     ldp x29, x30, [sp], #16
@@ -636,19 +638,19 @@ copia_film_in_posizione_in_var_temp:  //copia i dati di un singolo film in una s
     //Parametri della funzione che vengono passati:
     //x0 = posizione film
 
-    //calcolo indirizzo src della variabile film (vedi: linea 43)
-    ldr x1, =film //parametro indirizzo src memcpy
-    mov x2, film_size_aligned //parametro size src memcpy
-    //calcolo indirizzo di sorgente quale riga andare a copiare 
-    madd x1, x0, x2,x1 //x1 e' indirizzo sorgente
-                //x23 posizione
-    //calcolo indirizzo di destinazione di film_temp (vedi: linea 44)
+    ldr x1, =film               //parametro indirizzo sorgente della funzione memcpy
+    mov x2, film_size_aligned   //copio la size di un singolo film    
+    madd x1, x0, x2,x1          //per calcolare l'indirizzo sorgente moltiplico la posizione del film da copiare (x0) con la size di un film al risultato sommo l'indirizzo della struttura dove sono memorizzati i film 
+    // posizione * size + indirizzo struttura     
+
+    //calcolo indirizzo di destinazione di film_temp
     ldr x0, =film_temp   //indirizzo variabile temporanea di destinazione       
     ldrsw x24, n_film_temp //numero elementi variabile temporanea di destinazione
     madd x0, x24, x2,x0   // parametro indirizzo destinazione memcpy
-    bl memcpy
-    //incremento n_film_temp che indica il numero di film che contiene la variabile temporanea
-    add x24,x24,#1
+    // numero film struttura temp * size + indirizzo struttura temporanea
+    bl memcpy       //invoco la funzione memcpy
+    
+    add x24,x24,#1      //incremento n_film_temp che indica il numero di film che contiene la struttura temporanea
     ldr x1, =n_film_temp
     str x24, [x1]        
 
@@ -660,19 +662,19 @@ copia_film_in_posizione_in_var_temp:  //copia i dati di un singolo film in una s
 
 
 .type filtro_per_anno_ricorsivo, %function
-filtro_per_anno_ricorsivo:
+filtro_per_anno_ricorsivo:        //La seguente funzione dato un anno stampa tutti i film di quel anno
     stp x29, x30, [sp, #-16]!
     stp x20, x21, [sp, #-16]!
 
     ldr x20, n_film
-    cmp x20, #0
-    beq filtro_ricorsivo_error
-
-    read_int fmt_prompt_anno
- 
-    mov x1, #0
-    bl filtro_ricorsivo
-    b end_filtro_ricorsivo
+    cmp x20, #0         //confronto se il numero dei film è uguale a zero
+    beq filtro_ricorsivo_error     //se si stampo un messaggio di errore
+                                   //se no posso procedere con la funzione
+    read_int fmt_prompt_anno       //chiedo in input l'anno su cui fare la ricerca
+                            //x0 paramentro anno da cercare
+    mov x1, #0              //x1 parametro contatore che uso nella ricorsione per tenere conto dei film che ho confrontato
+    bl filtro_ricorsivo     //invoco la funzione filtro_ricorsivo
+    b end_filtro_ricorsivo  
 
     filtro_ricorsivo_error:
         adr x0, fmt_nessun_film_presente
@@ -691,21 +693,21 @@ filtro_ricorsivo:
     stp x20, x21, [sp, #-16]!
     stp x22, x23, [sp, #-16]!
 
-    mov x20, x0 // anno
-    mov x23, x1 // contato re
+    mov x20, x0 //copio l'anno passato come parametro in un registro non volatile 
+    mov x23, x1 //stessa cosa per il contatore 
 
-    ldr x22, =film // i film
+    ldr x22, =film //indirizzo struttura dove sono memorizzati i film
 
-    ldrsw x21, n_film // numero film
-    cmp x23, x21
-    blt caso_ricorsivo 
+    ldrsw x21, n_film //numero film
+    cmp x23, x21    //confronto il contatore con il numero dei film
+    blt caso_ricorsivo     //se è minore salta nel blocco caso ricorsivo 
 
     caso_base:
-        ldrsw x0, n_film_temp // numero film temporaneo
-        ldr x1, =film_temp // struttura film temporanea
-        ldr x2, =fmt_sezione_filtro_anno
+        ldrsw x0, n_film_temp   //numero film struttura temporanea
+        ldr x1, =film_temp      //struttura film temporanea
+        ldr x2, =fmt_sezione_filtro_anno   //stampa tutti i film presenti nella variabile temporanea
         bl stampa_tutti_i_film
-        b end_ricorsione
+        b end_ricorsione       //termina funzione
 
     caso_ricorsivo:
         mov x7, film_size_aligned // dimensione film
@@ -714,21 +716,21 @@ filtro_ricorsivo:
         add x6, x6, offset_film_anno // qua ci sta l'anno all'indirizzo film attuale
 
         ldr w5, [x6] // valore anno
-        cmp w5, w20
-        bne no_copia_film
+        cmp w5, w20     //confronto l'anno di un film con quello inserito in input
+        bne no_copia_film  //se sono diversi salta in no_copia_film per ripetere la funzione 
 
-        copia_film:
-            mov x0, x23
-            bl copia_film_in_posizione_in_var_temp
+        copia_film:     // se sono uguali 
+            mov x0, x23     //passiamo come parametro la posizione del film da copiare alla funzione copia_film_in_posizione_in_var_temp
+            bl copia_film_in_posizione_in_var_temp      //invochiamo la funzione 
 
-        no_copia_film:
-            mov x0, x20
-            add x1, x23, #1
-            bl filtro_ricorsivo
+        no_copia_film:     
+            mov x0, x20     //passo come parametro l'anno (input)
+            add x1, x23, #1     //il contatore
+            bl filtro_ricorsivo     //invoco di nuovo questa funzione 
 
 
     end_ricorsione:
-        svuota_variabile_temporanea
+        svuota_variabile_temporanea     //svuota la struttura temporanea perchè mi potrà servire di nuovo in altri punti del programma
 
     ldp x22, x23, [sp], #16
     ldp x20, x21, [sp], #16
@@ -737,7 +739,7 @@ filtro_ricorsivo:
     .size filtro_ricorsivo, (. - filtro_ricorsivo)
 
 .type scambio_posizione_film, %function
-scambio_posizione_film:
+scambio_posizione_film:             //La seguente funzione lette da input due posizioni, scambia gli elementi in quelle posizioni
     stp x29, x30, [sp, #-16]!
     stp x19, x20, [sp, #-16]!
     str x21, [sp, #-16]!
@@ -812,29 +814,34 @@ scambio_posizione_film:
 .type scambia_due_elementi_nella_struttura, %function
 scambia_due_elementi_nella_struttura:
     stp x29, x30, [sp, #-16]!
-    stp x21, x22, [sp, #-16]! 
-    
+    stp x21, x22, [sp, #-16]!     
 
-    //x0 posizione del primo elemento da scambiare 
-    //x1 posizione del secondo elemento da scambiare            
-    mov x21, x0
+    //x0 parametro1: posizione del primo elemento da scambiare 
+    //x1 parametro2: posizione del secondo elemento da scambiare            
+    mov x21, x0     //copio le posizioni dei film da scambiare in un registro non volatile
     mov x22, x1
 
-    bl copia_film_in_posizione_in_var_temp  //copia il primo elemento nella variabile temporanea
+    //COPIO IL PRIMO ELEMENTO NELLA STRUTTURA TEMPORANEA
+    //come parametro viene passato la posizione del film da copiare nella struttura temporanea alla funzione copia_film_in_posizione_in_var_temp 
+    bl copia_film_in_posizione_in_var_temp  //copia il primo elemento nella struttura temporanea
+    
+    //SOSTITUISCO IL PRIMO ELEMENTO CON IL SECONDO
+    ldr x4, =film               //carico l'indirizzo della struttura che contiene i film
+    mov x2, film_size_aligned   //copio la size
+    madd x21, x2, x21, x4       //Calcolo L'INDIRIZZO del primo elemento da scambiare = size * posizione + indirizzo struttura
+    madd x22, x2, x22, x4       //Calcolo L'INDIRIZZO del secondo elemento da scambiare = size * posizione + indirizzo struttura
+    //copio gli indirizzi calcolati per passarli come parametri alla funzione memcpy
+    mov x0, x21     //indirizzo primo elemento (indirizzo destinazione)
+    mov x1, x22     //indirizzo secondo elemento (indirizzo sorgente)
+    bl memcpy       //invoco la funzione memcpy
 
-    ldr x4, =film
-    mov x2, film_size_aligned //size
-    madd x21, x2, x21, x4                    // Indirizzo primo elemento
-    madd x22, x2, x22, x4                    // Indirizzo secondo elemento
-    mov x0, x21 //x0 destinazione primo elemento
-    mov x1, x22 //x1 sorgente secondo elemento
-    bl memcpy
-    mov x0, x22
-    adr x1, film_temp
-    mov x2, film_size_aligned
-    bl memcpy
+    //SOSTITUISCO IL SECONDO ELEMENTO CON IL PRIMO (che è ora memorizzato nella struttura temporanea)
+    mov x0, x22     //passo come parametro (indirizzo destinazione) l'indirizzo del secondo elemento
+    adr x1, film_temp   //passo come parametro (indirizzo sorgente) l'indirizzo della struttura temporanea
+    mov x2, film_size_aligned   //passo la size
+    bl memcpy       //invoco memcpy
 
-    svuota_variabile_temporanea
+    svuota_variabile_temporanea    //imposta il numero di elementi della struttura temporanea a zero
 
     ldp x21, x22, [sp], #16
     ldp x29, x30, [sp], #16
@@ -1015,3 +1022,10 @@ elimina_duplicato:
     ldp x29, x30, [sp], #16
     ret
     .size elimina_duplicato, (. - elimina_duplicato)
+
+
+
+
+
+
+    
